@@ -14,8 +14,6 @@ env/
 .env.sh
 
 # Generated files from notebooks
-crossplane/
-kubevela/
 test/
 setup/
 

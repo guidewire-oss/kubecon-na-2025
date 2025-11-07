@@ -1,0 +1,58 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xdynamodbtables.demo.kubecon.io
+spec:
+  scope: Cluster  # Cluster-scoped resources (v1 compatible behavior)
+  group: demo.kubecon.io
+  names:
+    kind: XDynamoDBTable
+    plural: xdynamodbtables
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Name of the DynamoDB table"
+                region:
+                  type: string
+                  description: "AWS region"
+                hashKey:
+                  type: string
+                  description: "Hash (partition) key attribute name"
+                attributes:
+                  type: array
+                  description: "Attribute definitions"
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                        enum: ["S", "N", "B"]
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: "AWS resource tags"
+              required:
+                - name
+                - region
+                - hashKey
+                - attributes
+            status:
+              type: object
+              properties:
+                tableArn:
+                  type: string
+                tableId:
+                  type: string

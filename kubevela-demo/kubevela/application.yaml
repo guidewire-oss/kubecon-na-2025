@@ -1,0 +1,258 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: product-catalog
+  namespace: default
+spec:
+  components:
+    # Application Component
+    - name: product-api
+      type: webservice
+      properties:
+        image: k3d-registry.localhost:5000/product-catalog-api:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: S3_BUCKET_NAME
+            value: "tenant-atlantis-product-images"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: PORT
+            value: "8080"
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: "/aws/credentials"
+        volumeMounts:
+          secret:
+            - name: aws-credentials
+              mountPath: /aws
+              secretName: aws-credentials
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+      traits:
+        # Horizontal Pod Autoscaler
+        - type: hpa
+          properties:
+            min: 2
+            max: 10
+            cpuUtil: 70
+            memUtil: 80
+
+        # Security Context
+        - type: podsecuritycontext
+          properties:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+        # Resource Limits
+        - type: resource
+          properties:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+    # S3 Bucket Component
+    - name: product-images
+      type: simple-s3
+      properties:
+        name: product-images
+        region: us-west-2
+        versioning: false
+
+  # Policies
+  policies:
+    # Topology for dev environment
+    - name: topology-dev
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: dev
+
+    # Topology for staging environment
+    - name: topology-staging
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: staging
+
+    # Topology for prod environment
+    - name: topology-prod
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: prod
+
+    # Override configurations per environment
+    - name: override-dev
+      type: override
+      properties:
+        components:
+          - name: product-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 1
+                  max: 3
+
+    - name: override-staging
+      type: override
+      properties:
+        components:
+          - name: product-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 2
+                  max: 5
+
+    - name: override-prod
+      type: override
+      properties:
+        components:
+          - name: product-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 3
+                  max: 10
+
+  # Workflow for multi-stage deployment with functional API testing
+  workflow:
+    steps:
+      # Deploy to dev
+      - name: deploy-dev
+        type: deploy
+        properties:
+          policies: ["topology-dev", "override-dev"]
+          auto: true
+
+      # Functional test: Create a product in dev
+      - name: create-test-product-dev
+        type: request
+        dependsOn: ["deploy-dev"]
+        timeout: "60s"
+        properties:
+          url: "http://product-api.dev.svc.cluster.local:8080/products"
+          method: "POST"
+          body:
+            name: "workflow-test-product"
+            description: "Automated workflow validation test"
+            price: 99.99
+        outputs:
+          - name: productIdDev
+            valueFrom: "response.id"
+          - name: productUrlDev
+            valueFrom: '"http://product-api.dev.svc.cluster.local:8080/products/" + response.id'
+
+      # Functional test: Retrieve the created product in dev
+      - name: verify-test-product-dev
+        type: request
+        dependsOn: ["create-test-product-dev"]
+        timeout: "60s"
+        inputs:
+          - from: productUrlDev
+            parameterKey: url
+        properties:
+          method: "GET"
+
+      # Manual approval for staging (only if dev tests pass)
+      - name: approval-staging
+        type: suspend
+        dependsOn: ["verify-test-product-dev"]
+
+      # Deploy to staging
+      - name: deploy-staging
+        type: deploy
+        dependsOn: ["approval-staging"]
+        properties:
+          policies: ["topology-staging", "override-staging"]
+          auto: true
+
+      # Functional test: Create a product in staging
+      - name: create-test-product-staging
+        type: request
+        dependsOn: ["deploy-staging"]
+        timeout: "60s"
+        properties:
+          url: "http://product-api.staging.svc.cluster.local:8080/products"
+          method: "POST"
+          body:
+            name: "workflow-test-product"
+            description: "Automated workflow validation test"
+            price: 99.99
+        outputs:
+          - name: productIdStaging
+            valueFrom: "response.id"
+          - name: productUrlStaging
+            valueFrom: '"http://product-api.staging.svc.cluster.local:8080/products/" + response.id'
+
+      # Functional test: Retrieve the created product in staging
+      - name: verify-test-product-staging
+        type: request
+        dependsOn: ["create-test-product-staging"]
+        timeout: "60s"
+        inputs:
+          - from: productUrlStaging
+            parameterKey: url
+        properties:
+          method: "GET"
+
+      # Manual approval for production (only if staging tests pass)
+      - name: approval-prod
+        type: suspend
+        dependsOn: ["verify-test-product-staging"]
+        properties:
+          duration: "1m"
+
+      # Deploy to production
+      - name: deploy-prod
+        type: deploy
+        dependsOn: ["approval-prod"]
+        properties:
+          policies: ["topology-prod", "override-prod"]
+          auto: true
+
+      # Functional test: Create a product in production
+      - name: create-test-product-prod
+        type: request
+        dependsOn: ["deploy-prod"]
+        timeout: "60s"
+        properties:
+          url: "http://product-api.prod.svc.cluster.local:8080/products"
+          method: "POST"
+          body:
+            name: "workflow-test-product"
+            description: "Automated workflow validation test"
+            price: 99.99
+        outputs:
+          - name: productIdProd
+            valueFrom: "response.id"
+          - name: productUrlProd
+            valueFrom: '"http://product-api.prod.svc.cluster.local:8080/products/" + response.id'
+
+      # Functional test: Retrieve the created product in production
+      - name: verify-test-product-prod
+        type: request
+        dependsOn: ["create-test-product-prod"]
+        timeout: "60s"
+        inputs:
+          - from: productUrlProd
+            parameterKey: url
+        properties:
+          method: "GET"

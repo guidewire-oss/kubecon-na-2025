@@ -1,0 +1,51 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xs3buckets.demo.kubecon.io
+spec:
+  group: demo.kubecon.io
+  names:
+    kind: XS3Bucket
+    plural: xs3buckets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Name of the S3 bucket (will be prefixed with tenant-atlantis-)"
+                region:
+                  type: string
+                  description: "AWS region"
+                  default: "us-west-2"
+                versioning:
+                  type: boolean
+                  description: "Enable versioning on the bucket"
+                  default: false
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: "AWS resource tags (will be merged with standard tags)"
+              required:
+                - name
+                - region
+            status:
+              type: object
+              properties:
+                bucketArn:
+                  type: string
+                  description: "ARN of the created S3 bucket"
+                bucketName:
+                  type: string
+                  description: "Full name of the created S3 bucket"
+                region:
+                  type: string
+                  description: "Region where bucket was created"
