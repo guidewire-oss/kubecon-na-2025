@@ -15,40 +15,42 @@ source .env.aws
 
 ## Deployment
 
-### Bash Script (Recommended)
+### Recommended: Dagger Pipeline (via deploy.sh wrapper)
 
 ```bash
 cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
 
-# Deploy with cleanup
-./deploy-local.sh --cleanup dev
+# Deploy to dev (default)
+./deploy.sh dev v1.0.0-traditional
 
 # Deploy to other environments
-./deploy-local.sh staging
-./deploy-local.sh prod
+./deploy.sh staging v1.0.0-traditional
+./deploy.sh prod v1.0.0-traditional
 ```
 
 **What it does:**
-1. Terraform creates S3 bucket (`tenant-atlantis-product-images-traditional`)
-2. Docker builds and pushes image (`v1.0.0-traditional`)
-3. Kubectl applies K8s manifests (Deployment, Service, HPA)
-
-### Dagger (Portable CI/CD)
-
-```bash
-# Install Dagger
-curl -L https://dl.dagger.io/dagger/install.sh | sudo sh
-
-# Run from traditional/ directory
-cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
-export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-traditional
-cd dagger && go mod download && go run main.go
-```
+1. Loads AWS credentials from `../../.env.aws`
+2. Runs Dagger pipeline (Go-based workflow) that:
+   - Executes Terraform to create S3 bucket (`tenant-atlantis-product-images-traditional`)
+   - Builds and pushes Docker image (`v1.0.0-traditional`)
+   - Deploys K8s manifests (Deployment, Service, HPA)
+   - Runs functional API tests (POST + GET)
 
 **Benefits:**
 - Portable: runs locally or in any CI system
-- Code-based: Go instead of YAML
+- Code-based: Go workflow (310 lines) instead of bash scripts
 - Container-based: reproducible builds
+- Automated testing: validates deployment with actual API calls
+
+### Alternative: Direct Dagger Execution
+
+```bash
+# Run Dagger directly (without wrapper)
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
+export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-traditional
+source ../../.env.aws  # Load credentials
+cd dagger && go run main.go
+```
 
 ### Manual Steps
 
@@ -103,13 +105,26 @@ cd terraform && rm -rf .terraform && terraform init
 ## Cleanup
 
 ```bash
-./deploy-local.sh --cleanup dev
+# Complete cleanup (K8s + AWS resources)
+./cleanup.sh
+
+# Or manual cleanup
 kubectl delete namespace dev staging prod
+cd terraform && terraform destroy -auto-approve
 ```
 
 ## Comparison
 
-**Traditional**: 3 separate tools (Terraform, K8s, Dagger), 10 files (597 lines)
-**KubeVela**: 1 unified tool, 1 file (171 lines), automatic workflow
+**Traditional**: 741 lines across 6 files
+- Terraform (243 lines) + K8s manifests (188 lines) + Dagger pipeline (310 lines Go)
+- Tools: Terraform + K8s + Dagger
+- Workflow: Imperative Go code
 
-See main [README.md](../../README.md) for detailed comparison.
+**KubeVela**: 258 lines in 1 file
+- Single unified application definition
+- Tools: KubeVela only
+- Workflow: Declarative YAML
+
+**Result**: 65% less code, 83% fewer files with KubeVela
+
+See main [README.md](../README.md) for detailed comparison.

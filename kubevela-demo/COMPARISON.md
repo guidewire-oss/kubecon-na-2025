@@ -4,50 +4,54 @@
 
 | Aspect | Traditional | KubeVela | Improvement |
 |--------|-------------|----------|-------------|
-| **Files per app** | 7 | 1 | 86% fewer |
-| **Lines per app** | 641 | 258 | 60% less |
-| **Tools** | Terraform + K8s + Bash | KubeVela | Unified |
-| **Workflow** | External (260 lines bash) | Built-in with functional tests | Integrated |
+| **Files per app** | 6 | 1 | 83% fewer |
+| **Lines per app** | 741 | 258 | 65% less |
+| **Tools** | Terraform + K8s + Dagger (Go) | KubeVela only | Unified |
+| **Workflow** | Dagger (310 lines Go) | Built-in YAML | Imperative vs Declarative |
 | **Infrastructure** | Separate Terraform (243 lines) | Components | Reusable |
-| **API Testing** | Bash script (193 lines) | Declarative YAML (12 lines/env) | Built-in |
+| **API Testing** | Dagger Go code (124 lines) | Declarative YAML (36 lines) | 71% less code |
+| **Programming** | Requires Go skills | YAML configuration | Lower barrier |
 
 ## Traditional Approach
 
 **Structure:**
 ```
-terraform/           # 243 lines (one-time)
+terraform/           # 243 lines (one-time infrastructure)
   - S3 bucket: tenant-atlantis-product-images-traditional
   - IAM: Role ARN configured via ServiceAccount annotation
 
-k8s/                # 188 lines (per-app)
+k8s/                # 188 lines (per-app deployment)
   - deployment.yaml: 104 lines
   - hpa.yaml: 44 lines
   - service.yaml: 17 lines
   - configmap.yaml: 12 lines
   - serviceaccount.yaml: 11 lines
 
-deploy-local.sh     # 260 lines (per-app)
-  - Deployment automation with integrated API tests
-  - POST create + GET verify functional tests
+dagger/main.go      # 310 lines (per-app workflow - PRIMARY)
+  - Terraform execution
+  - Docker build & push
+  - Kubernetes deployment
+  - Functional API tests (POST + GET)
+  - Written in Go (imperative code)
 
-test-api.sh         # 193 lines (per-app)
-  - Standalone acceptance test suite
-  - 7 comprehensive API tests (health, CRUD operations)
+deploy.sh           # 28 lines (thin wrapper)
+  - Loads credentials
+  - Calls Dagger pipeline
 
-Total per-app: 641 lines (188 K8s + 260 deploy + 193 test)
-Optional: 310 lines additional (dagger/main.go for CI/CD pipeline)
+Total per-app: 741 lines (243 Terraform + 188 K8s + 310 Dagger)
 ```
 
 **Deployment:**
 ```bash
 cd traditional
-./deploy-local.sh --cleanup dev
+./deploy.sh dev v1.0.0-traditional
 ```
 
 **Key Points:**
-- Manual coordination between Terraform, Docker, and K8s
-- Separate files for each concern
-- Environment-specific values require manual updates or templating
+- Dagger provides portable CI/CD (runs locally and in CI)
+- Workflow written in Go (imperative, requires programming)
+- Manual coordination between Terraform, K8s, and Dagger
+- Separate tools for each concern (IaC, deployment, workflow)
 
 ## KubeVela Approach
 
@@ -151,24 +155,21 @@ policies:
 
 ### Workflow and Functional API Testing
 
-**Traditional Approach Options:**
+**Traditional Approach: Dagger Pipeline**
 
-**Option 1: deploy-local.sh** (260 lines bash)
-- Terraform operations
-- Docker build
-- Deploy to Kubernetes
+**dagger/main.go** (310 lines Go) - **PRIMARY workflow solution**
+- Full CI/CD pipeline in Go
+- Terraform execution
+- Docker build & push
+- Kubernetes deployment
 - Functional API tests (POST + GET)
-- **Implementation**: Bash with kubectl + curl
+- **Implementation**: Imperative Go code with http.Post() and http.Get()
+- **Testing logic**: 124 lines of Go code
+- **Requires**: Go programming skills, Dagger CLI
 
-**Option 2: test-api.sh** (193 lines bash)
-- Standalone acceptance test suite
-- 7 comprehensive tests: health, readiness, list, create, retrieve, delete, verify
-- **Implementation**: Bash with kubectl run + curl containers
-
-**Option 3: dagger/main.go** (310 lines Go)
-- Full CI/CD pipeline
-- Terraform, Docker, Deploy, Test
-- **Implementation**: Go code with http.Post() and http.Get()
+**deploy.sh** (28 lines) - Thin wrapper
+- Loads AWS credentials
+- Calls `go run main.go`
 
 **KubeVela (application.yaml):** Built-in functional API testing
 ```yaml
@@ -225,11 +226,10 @@ workflow:
 - **Declarative approach**: Test logic defined in YAML, not code
 
 **Comparison:**
-- All approaches test the same core functionality (POST create + GET verify)
-- Traditional Bash: 50+ lines per test cycle (imperative)
-- Traditional Go: 124 lines for testAPI + waitForAPI (imperative)
-- KubeVela: 12 lines per environment test cycle (declarative YAML)
-- **KubeVela advantage**: 60% less code, no programming required, declarative approach
+- Both test the same core functionality (POST create + GET verify)
+- **Traditional (Dagger)**: 124 lines of Go code for testAPI + waitForAPI (imperative)
+- **KubeVela**: 36 lines of YAML across 3 environments (12 lines per env, declarative)
+- **KubeVela advantage**: 71% less code, no programming required, declarative approach
 
 ## Resource Naming
 
@@ -243,13 +243,13 @@ To avoid conflicts, the traditional approach uses different names:
 
 ## Key Advantages of KubeVela
 
-1. **60% Less Code**: 258 lines vs 641 lines per application
-2. **86% Fewer Files**: 1 file vs 7 files to manage per application
+1. **65% Less Code**: 258 lines vs 741 lines per application
+2. **83% Fewer Files**: 1 file vs 6 files to manage per application
 3. **Single Source of Truth**: One file for app, infrastructure, deployment, and tests
-4. **No External CI/CD**: Built-in workflow engine with functional API tests
-5. **Declarative Testing**: YAML-based tests vs Bash code (12 vs 50+ lines per test)
+4. **No External CI/CD**: Built-in workflow engine (no Dagger, no Go code)
+5. **Declarative Testing**: YAML-based tests (36 lines) vs Go code (124 lines) - 71% less
 6. **Data Flow Between Steps**: Captures response data and passes to next step
-7. **No Programming Required**: Platform teams define capabilities, devs just configure
+7. **No Programming Required**: YAML configuration vs Go programming
 8. **Reusable Components**: Infrastructure as platform capabilities
 9. **Policy-Driven**: DRY principle for multi-environment configs
 10. **Kubernetes-Native**: Uses K8s as control plane and state store
@@ -257,20 +257,21 @@ To avoid conflicts, the traditional approach uses different names:
 ## Detailed Line Count Breakdown
 
 ### Traditional Approach (Per Application)
-- K8s Manifests: 188 lines (5 files)
-- Deployment Script: 260 lines (deploy-local.sh with tests)
-- Test Suite: 193 lines (test-api.sh standalone)
-- **Total: 641 lines** (7 files)
-- Optional: 310 lines additional (dagger/main.go for CI/CD)
+- Terraform HCL: 243 lines (infrastructure)
+- K8s Manifests: 188 lines (5 files, deployment)
+- **Dagger Pipeline: 310 lines** (Go code, workflow & testing)
+- Wrapper Scripts: 28 lines (deploy.sh)
+- **Total: 741 lines** (6 files)
 
 ### KubeVela Approach (Per Application)
 - Application Definition: 258 lines (1 file, includes everything)
 - **Total: 258 lines**
 
 ### Code Reduction
-- **Lines saved**: 383 lines (60% reduction)
-- **Files reduced**: From 7 to 1 (86% reduction)
-- **Testing code**: 36 lines (KubeVela) vs 193 lines (Traditional)
+- **Lines saved**: 483 lines (65% reduction)
+- **Files reduced**: From 6 to 1 (83% reduction)
+- **Testing code**: 36 lines YAML (KubeVela) vs 124 lines Go (Traditional) - 71% less
+- **Programming**: 0 lines code (KubeVela) vs 310 lines Go (Traditional)
 
 ## When to Use Each
 

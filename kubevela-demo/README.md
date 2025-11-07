@@ -10,11 +10,16 @@ This demo showcases KubeVela's unified application delivery model compared to tr
 
 | Approach | Files | Lines | Tools |
 |----------|-------|-------|-------|
-| **Traditional** | 7 files | 641 lines | Terraform + K8s + Bash scripts |
+| **Traditional** | 6 files | 741 lines | Terraform + K8s + Dagger (Go) |
 | **KubeVela** | 1 file | 258 lines | KubeVela only |
-| **Improvement** | 86% fewer | 60% less | Unified |
+| **Improvement** | 83% fewer | 65% less | Unified |
 
-**Traditional:** Terraform (243 lines) + K8s manifests (188 lines) + deployment script (260 lines) + test script (193 lines)
+**Traditional:**
+- Terraform (243 lines) - Infrastructure as Code
+- K8s manifests (188 lines) - Application deployment
+- **Dagger pipeline (310 lines Go)** - Workflow & testing (portable CI/CD)
+- Total: 741 lines across infrastructure, deployment, and workflow
+
 **KubeVela:** Single application.yaml with app + infrastructure + workflow + functional tests
 
 ## Quick Start
@@ -41,9 +46,11 @@ docker push localhost:5000/product-catalog-api:v1.0.0
 
 ```bash
 cd traditional
-./deploy-local.sh --cleanup dev
+./deploy.sh dev v1.0.0-traditional
 kubectl get pods,svc,hpa -n dev
 ```
+
+**Note:** Uses Dagger (Go-based portable CI/CD) for workflow automation.
 
 See [`traditional/DEMO_STEPS.md`](traditional/DEMO_STEPS.md) for details.
 
@@ -74,12 +81,13 @@ kubectl get pods,hpa -n prod
 
 | Benefit | Traditional | KubeVela | Impact |
 |---------|-------------|----------|--------|
-| **Files per app** | 7 files | 1 file | 86% fewer |
-| **Lines per app** | 641 lines | 258 lines | 60% less |
-| **Tools** | Terraform + K8s + Bash | KubeVela | Unified |
-| **Workflow** | External scripts (260 lines) | Built-in YAML | Integrated |
-| **Testing** | Bash script (193 lines) | Built-in request steps | Declarative |
-| **Multi-env** | Duplicate configs | Policy overrides | DRY |
+| **Files per app** | 6 files | 1 file | 83% fewer |
+| **Lines per app** | 741 lines | 258 lines | 65% less |
+| **Tools** | Terraform + K8s + Dagger (Go) | KubeVela only | Unified |
+| **Workflow** | Dagger (310 lines Go) | Built-in YAML | Imperative vs Declarative |
+| **Testing** | Dagger Go code (124 lines) | Built-in request steps (36 lines) | 71% less code |
+| **Multi-env** | Code logic in Dagger | Policy overrides | DRY |
+| **Programming** | Requires Go skills | YAML configuration | Lower barrier |
 
 **Key Advantages:**
 - Single source of truth for app + infrastructure + workflow + tests
