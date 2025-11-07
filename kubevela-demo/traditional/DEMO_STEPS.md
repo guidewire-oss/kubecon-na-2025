@@ -9,7 +9,7 @@ kubectl get nodes
 echo $AWS_ACCESS_KEY_ID
 
 # If credentials not set
-cd /workspaces/workspace/kubevela_samples/15.KubeCon_NA_2025_Demo
+cd /workspaces/workspace/kubecon-NA-2025
 source .env.aws
 ```
 
@@ -18,7 +18,7 @@ source .env.aws
 ### Bash Script (Recommended)
 
 ```bash
-cd /workspaces/workspace/kubevela_samples/15.KubeCon_NA_2025_Demo/KV-demo/comparison/traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
 
 # Deploy with cleanup
 ./deploy-local.sh --cleanup dev
@@ -40,7 +40,7 @@ cd /workspaces/workspace/kubevela_samples/15.KubeCon_NA_2025_Demo/KV-demo/compar
 curl -L https://dl.dagger.io/dagger/install.sh | sudo sh
 
 # Run from traditional/ directory
-cd /workspaces/workspace/kubevela_samples/15.KubeCon_NA_2025_Demo/KV-demo/comparison/traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
 export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-traditional
 cd dagger && go mod download && go run main.go
 ```
@@ -53,17 +53,17 @@ cd dagger && go mod download && go run main.go
 ### Manual Steps
 
 ```bash
-cd comparison/traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
 
 # 1. Terraform
 cd terraform && terraform init && terraform apply -auto-approve && cd ..
 
 # 2. Build image
-cd ../../app
+cd ../app
 DOCKER_BUILDKIT=0 docker build -t product-catalog-api:v1.0.0-traditional .
 docker tag product-catalog-api:v1.0.0-traditional localhost:5000/product-catalog-api:v1.0.0-traditional
 docker push localhost:5000/product-catalog-api:v1.0.0-traditional
-cd ../comparison/traditional
+cd ../traditional
 
 # 3. Deploy K8s
 kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -

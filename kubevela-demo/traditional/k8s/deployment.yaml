@@ -42,8 +42,10 @@ spec:
         envFrom:
         - configMapRef:
             name: product-api-config
-        - secretRef:
-            name: aws-credentials
+        
+        env:
+        - name: AWS_SHARED_CREDENTIALS_FILE
+          value: "/aws/credentials"
 
         # Resource limits and requests
         resources:
@@ -90,12 +92,18 @@ spec:
           mountPath: /tmp
         - name: cache
           mountPath: /app/.cache
+        - name: aws-credentials
+          mountPath: /aws
+          readOnly: true
 
       volumes:
       - name: tmp
         emptyDir: {}
       - name: cache
         emptyDir: {}
+      - name: aws-credentials
+        secret:
+          secretName: aws-credentials
 
       # Restart policy
       restartPolicy: Always

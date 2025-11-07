@@ -1,6 +1,7 @@
 # S3 Bucket for Product Images
 resource "aws_s3_bucket" "product_images" {
-  bucket = var.bucket_name
+  bucket        = var.bucket_name
+  force_destroy = true  # Allow deletion even if bucket contains objects
 
   tags = merge(
     var.common_tags,
