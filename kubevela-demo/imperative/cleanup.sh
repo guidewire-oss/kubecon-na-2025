@@ -1,11 +1,11 @@
 #!/bin/bash
-# Cleanup script for traditional approach
-# Equivalent to: vela delete product-catalog
+# Cleanup script for imperative approach
+# Equivalent to: vela delete kv-product-catalog
 # Deletes all resources from all environments (dev, staging, prod)
 
 set -e
 
-echo "=== Traditional Approach: Complete Cleanup ==="
+echo "=== Imperative Approach: Complete Cleanup ==="
 echo ""
 
 # Load AWS credentials from .env.aws (for AWS CLI and Terraform)
@@ -57,7 +57,7 @@ echo "=== Cleaning up AWS infrastructure ==="
 
 BUCKET_NAME="tenant-atlantis-product-images-imperative"
 
-# Empty S3 bucket before Terraform destroy (required for non-empty buckets)
+# Empty S3 bucket before Terraform destroy (Terraform can't delete non-empty buckets without force_destroy)
 echo "Emptying S3 bucket: $BUCKET_NAME"
 if command -v aws &> /dev/null; then
     # Check if bucket exists
@@ -75,14 +75,31 @@ fi
 
 echo ""
 
-# Destroy Terraform infrastructure
+# Destroy Terraform infrastructure (bucket deletion)
 echo "Destroying Terraform resources..."
 cd terraform
 
 if [ -f "terraform.tfstate" ]; then
     echo "  Running terraform destroy..."
     terraform destroy -auto-approve
-    echo "  ✓ Terraform resources destroyed"
+    echo "  ✓ Terraform resources destroyed (including S3 bucket)"
+
+    # Verify bucket is actually deleted (handle eventual consistency)
+    if command -v aws &> /dev/null; then
+        echo "  Verifying bucket deletion..."
+        for i in {1..10}; do
+            if ! aws s3 ls "s3://$BUCKET_NAME" 2>/dev/null; then
+                echo "  ✓ Bucket deletion confirmed"
+                break
+            fi
+            if [ $i -eq 10 ]; then
+                echo "  Warning: Bucket still exists after Terraform destroy (eventual consistency?)"
+                echo "  Attempting manual deletion..."
+                aws s3api delete-bucket --bucket "$BUCKET_NAME" 2>/dev/null && echo "  ✓ Manual deletion successful" || echo "  Failed to delete bucket manually"
+            fi
+            sleep 2
+        done
+    fi
 else
     echo "  ✓ No Terraform state found (skipping)"
 fi
@@ -102,11 +119,11 @@ echo "=== Cleanup Complete ==="
 echo ""
 echo "All resources have been deleted:"
 echo "  ✓ Kubernetes resources (dev, staging, prod namespaces)"
-echo "  ✓ S3 bucket: $BUCKET_NAME (emptied and deleted)"
-echo "  ✓ IAM roles and policies"
+echo "  ✓ S3 bucket: $BUCKET_NAME (emptied by AWS CLI, deleted by Terraform)"
+echo "  ✓ IAM roles and policies (if any, deleted by Terraform)"
 echo "  ✓ Docker images (local)"
 echo ""
 echo "Compare with KubeVela cleanup:"
-echo "  Traditional: ./cleanup.sh"
-echo "  KubeVela:    vela delete product-catalog"
+echo "  Imperative: ./cleanup.sh"
+echo "  KubeVela:   vela delete kv-product-catalog"
 echo ""

@@ -10,15 +10,15 @@ This demo showcases KubeVela's unified application delivery model compared to tr
 
 | Approach | Files | Lines | Tools |
 |----------|-------|-------|-------|
-| **Traditional** | 6 files | 741 lines | Terraform + K8s + Dagger (Go) |
+| **Traditional** | 6 files | 746 lines | Terraform + K8s + Dagger (Go) |
 | **KubeVela** | 1 file | 258 lines | KubeVela only |
 | **Improvement** | 83% fewer | 65% less | Unified |
 
 **Traditional:**
-- Terraform (243 lines) - Infrastructure as Code
-- K8s manifests (188 lines) - Application deployment
-- **Dagger pipeline (310 lines Go)** - Workflow & testing (portable CI/CD)
-- Total: 741 lines across infrastructure, deployment, and workflow
+- Terraform (244 lines) - Infrastructure as Code
+- K8s manifests (196 lines) - Application deployment
+- **Dagger pipeline (306 lines Go)** - Workflow & testing (portable CI/CD)
+- Total: 746 lines across infrastructure, deployment, and workflow
 
 **KubeVela:** Single application.yaml with app + infrastructure + workflow + functional tests
 
@@ -50,8 +50,6 @@ cd imperative
 kubectl get pods,svc,hpa -n dev
 ```
 
-**Note:** Uses Dagger (Go-based portable CI/CD) for workflow automation.
-
 See [`imperative/DEMO_STEPS.md`](imperative/DEMO_STEPS.md) for details.
 
 #### 3. KubeVela Approach
@@ -82,19 +80,18 @@ kubectl get pods,hpa -n prod
 | Benefit | Traditional | KubeVela | Impact |
 |---------|-------------|----------|--------|
 | **Files per app** | 6 files | 1 file | 83% fewer |
-| **Lines per app** | 741 lines | 258 lines | 65% less |
+| **Lines per app** | 746 lines | 258 lines | 65% less |
 | **Tools** | Terraform + K8s + Dagger (Go) | KubeVela only | Unified |
-| **Workflow** | Dagger (310 lines Go) | Built-in YAML | Imperative vs Declarative |
-| **Testing** | Dagger Go code (124 lines) | Built-in request steps (36 lines) | 71% less code |
+| **Workflow** | Dagger (306 lines Go) | Built-in YAML | Imperative vs Declarative |
+| **Testing** | In-cluster test pod | Built-in request steps (36 lines) | Simpler |
 | **Multi-env** | Code logic in Dagger | Policy overrides | DRY |
 | **Programming** | Requires Go skills | YAML configuration | Lower barrier |
 
 **Key Advantages:**
-- Single source of truth for app + infrastructure + workflow + tests
+- Single source of truth (app + infra + workflow + tests)
 - Built-in progressive delivery with approval gates
-- Automated functional API testing (POST + GET validation)
+- Automated functional API testing
 - Policy-based environment configuration
-- No external CI/CD required
 
 ## Documentation
 
@@ -104,9 +101,8 @@ kubectl get pods,hpa -n prod
 
 ## Troubleshooting
 
-**Workflow Resume:** Use application name: `vela workflow resume kv-product-catalog`
-
-**Image Pull Issues:** Verify registry with `k3d registry list` and `curl http://localhost:5000/v2/_catalog`
+- **Workflow Resume:** `vela workflow resume kv-product-catalog`
+- **Image Pull:** Verify with `curl http://localhost:5000/v2/_catalog`
 
 ## Cleanup
 

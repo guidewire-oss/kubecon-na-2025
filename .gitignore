@@ -36,3 +36,6 @@ terraform.tfstate
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate.backup
+
+k3d-registry.localhost:5000
+localhost:5000

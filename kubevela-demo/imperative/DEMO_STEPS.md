@@ -115,8 +115,8 @@ cd terraform && terraform destroy -auto-approve
 
 ## Comparison
 
-**Traditional**: 741 lines across 6 files
-- Terraform (243 lines) + K8s manifests (188 lines) + Dagger pipeline (310 lines Go)
+**Traditional**: 746 lines across 6 files
+- Terraform (244 lines) + K8s manifests (196 lines) + Dagger pipeline (306 lines Go)
 - Tools: Terraform + K8s + Dagger
 - Workflow: Imperative Go code
 

@@ -1,57 +1,47 @@
-# Traditional vs KubeVela Comparison
+# Imperative vs KubeVela Comparison
 
 ## Quick Summary
 
-| Aspect | Traditional | KubeVela | Improvement |
+| Aspect | Imperative | KubeVela | Improvement |
 |--------|-------------|----------|-------------|
 | **Files per app** | 6 | 1 | 83% fewer |
-| **Lines per app** | 741 | 258 | 65% less |
+| **Lines per app** | 746 | 258 | 65% less |
 | **Tools** | Terraform + K8s + Dagger (Go) | KubeVela only | Unified |
-| **Workflow** | Dagger (310 lines Go) | Built-in YAML | Imperative vs Declarative |
-| **Infrastructure** | Separate Terraform (243 lines) | Components | Reusable |
-| **API Testing** | Dagger Go code (124 lines) | Declarative YAML (36 lines) | 71% less code |
+| **Workflow** | Dagger (306 lines Go) | Built-in YAML | Imperative vs Declarative |
+| **Infrastructure** | Separate Terraform (244 lines) | Components | Reusable |
+| **API Testing** | In-cluster test pod | Declarative YAML (36 lines) | Simpler |
 | **Programming** | Requires Go skills | YAML configuration | Lower barrier |
 
-## Traditional Approach
+## Imperative Approach
 
 **Structure:**
 ```
-terraform/           # 243 lines (one-time infrastructure)
+terraform/           # 244 lines (one-time infrastructure)
   - S3 bucket: tenant-atlantis-product-images-imperative
   - IAM: Role ARN configured via ServiceAccount annotation
 
-k8s/                # 188 lines (per-app deployment)
-  - deployment.yaml: 104 lines
-  - hpa.yaml: 44 lines
-  - service.yaml: 17 lines
-  - configmap.yaml: 12 lines
-  - serviceaccount.yaml: 11 lines
+k8s/                # 196 lines (per-app deployment)
+  - Kubernetes manifests across 5 files
 
-dagger/main.go      # 310 lines (per-app workflow - PRIMARY)
+dagger/main.go      # 306 lines (per-app workflow - PRIMARY)
   - Terraform execution
   - Docker build & push
   - Kubernetes deployment
-  - Functional API tests (POST + GET)
+  - Functional API tests (POST + GET in-cluster)
   - Written in Go (imperative code)
 
-deploy.sh           # 28 lines (thin wrapper)
+deploy.sh           # 40 lines (wrapper with Docker build)
+  - Builds and pushes Docker image
   - Loads credentials
   - Calls Dagger pipeline
 
-Total per-app: 741 lines (243 Terraform + 188 K8s + 310 Dagger)
-```
-
-**Deployment:**
-```bash
-cd traditional
-./deploy.sh dev v1.0.0-traditional
+Total per-app: 746 lines (244 Terraform + 196 K8s + 306 Dagger)
 ```
 
 **Key Points:**
-- Dagger provides portable CI/CD (runs locally and in CI)
-- Workflow written in Go (imperative, requires programming)
+- Dagger provides portable CI/CD (Go-based imperative workflow)
 - Manual coordination between Terraform, K8s, and Dagger
-- Separate tools for each concern (IaC, deployment, workflow)
+- Separate tools for each concern
 
 ## KubeVela Approach
 
@@ -75,22 +65,13 @@ application.yaml     # 258 lines (per-app)
   - 3 test cycles (dev/staging/prod): 12 lines each = 36 lines total testing
 
 Total per-app: 258 lines (everything in one file)
-Total one-time: 268 lines (192 Crossplane + 76 ComponentDefinition)
-```
-
-**Deployment:**
-```bash
-vela up -f application.yaml
 ```
 
 **Key Points:**
-- Single file defines everything (258 lines vs 641 lines traditional)
-- Built-in workflow with approval gates and functional tests
+- Single unified file (258 lines vs 746 lines traditional = 65% reduction)
+- Built-in workflow with approval gates and functional API tests
 - Policy-driven environment configuration
 - Infrastructure as application components
-- **Automated functional API testing** - tests actual business logic (POST/GET)
-- 60% less code per application
-- 86% fewer files to manage
 
 ## Code Examples
 
@@ -129,18 +110,11 @@ traits:
 
 ### Multi-Environment Configuration
 
-**Traditional:**
-- Duplicate K8s manifests per environment, OR
-- Complex templating with Helm/Kustomize, OR
-- CI/CD variables and conditionals
+**Traditional:** Duplicate manifests, complex templating (Helm/Kustomize), or CI/CD variables
 
-**KubeVela:**
+**KubeVela:** Policy-based overrides
 ```yaml
 policies:
-  - name: topology-dev
-    type: topology
-    properties:
-      namespace: dev
   - name: override-dev
     type: override
     properties:
@@ -155,19 +129,20 @@ policies:
 
 ### Workflow and Functional API Testing
 
-**Traditional Approach: Dagger Pipeline**
+**Imperative Approach: Dagger Pipeline**
 
-**dagger/main.go** (310 lines Go) - **PRIMARY workflow solution**
+**dagger/main.go** (306 lines Go) - **PRIMARY workflow solution**
 - Full CI/CD pipeline in Go
 - Terraform execution
-- Docker build & push
+- Docker build & push (coordinated via deploy.sh)
 - Kubernetes deployment
-- Functional API tests (POST + GET)
-- **Implementation**: Imperative Go code with http.Post() and http.Get()
-- **Testing logic**: 124 lines of Go code
+- Functional API tests (POST + GET via in-cluster test pod)
+- **Implementation**: Test pod with ConfigMap-mounted shell script
+- **Testing approach**: kubectl run with script execution inside cluster
 - **Requires**: Go programming skills, Dagger CLI
 
-**deploy.sh** (28 lines) - Thin wrapper
+**deploy.sh** (40 lines) - Wrapper with Docker build
+- Builds and pushes Docker image to k3d registry
 - Loads AWS credentials
 - Calls `go run main.go`
 
@@ -216,38 +191,30 @@ workflow:
     # Similar pattern for staging and production...
 ```
 
-**How it works:**
-- Uses built-in `request` workflow step type
-- **Tests actual business logic** - not just health endpoints
-- POST creates a product, GET retrieves it back
-- Validates full CRUD workflow (create + read)
-- Passes data between steps using `outputs` and `inputs`
-- Workflow **automatically halts** if status code > 400
-- **Declarative approach**: Test logic defined in YAML, not code
-
 **Comparison:**
-- Both test the same core functionality (POST create + GET verify)
-- **Traditional (Dagger)**: 124 lines of Go code for testAPI + waitForAPI (imperative)
-- **KubeVela**: 36 lines of YAML across 3 environments (12 lines per env, declarative)
-- **KubeVela advantage**: 71% less code, no programming required, declarative approach
+- Both test core functionality (POST create + GET verify)
+- **Imperative (Dagger)**: In-cluster test pod (Go code)
+- **KubeVela**: 36 lines YAML across 3 environments (declarative)
+- Workflow halts automatically on failure (status code > 400)
 
 ## Resource Naming
 
-To avoid conflicts, the traditional approach uses different names:
+To avoid conflicts, the imperative approach uses different names:
 
-| Resource | Traditional | KubeVela |
+| Resource | Imperative | KubeVela |
 |----------|-------------|----------|
 | S3 Bucket | `tenant-atlantis-product-images-imperative` | `tenant-atlantis-kv-prodcat-images` |
 | Image Tag | `v1.0.0-imperative` | `v1.0.0` |
+| Deployment | `imp-product-catalog` | `kv-product-cat-api` |
 | IAM Role | Role ARN placeholder (injected at deploy) | Crossplane-managed |
 
 ## Key Advantages of KubeVela
 
-1. **65% Less Code**: 258 lines vs 741 lines per application
+1. **65% Less Code**: 258 lines vs 746 lines per application
 2. **83% Fewer Files**: 1 file vs 6 files to manage per application
 3. **Single Source of Truth**: One file for app, infrastructure, deployment, and tests
 4. **No External CI/CD**: Built-in workflow engine (no Dagger, no Go code)
-5. **Declarative Testing**: YAML-based tests (36 lines) vs Go code (124 lines) - 71% less
+5. **Declarative Testing**: YAML-based tests (36 lines) - built-in workflow steps
 6. **Data Flow Between Steps**: Captures response data and passes to next step
 7. **No Programming Required**: YAML configuration vs Go programming
 8. **Reusable Components**: Infrastructure as platform capabilities
@@ -256,84 +223,31 @@ To avoid conflicts, the traditional approach uses different names:
 
 ## Detailed Line Count Breakdown
 
-### Traditional Approach (Per Application)
-- Terraform HCL: 243 lines (infrastructure)
-- K8s Manifests: 188 lines (5 files, deployment)
-- **Dagger Pipeline: 310 lines** (Go code, workflow & testing)
-- Wrapper Scripts: 28 lines (deploy.sh)
-- **Total: 741 lines** (6 files)
+### Imperative Approach (Per Application)
+- Terraform HCL: 244 lines (infrastructure)
+- K8s Manifests: 196 lines (5 files, deployment)
+- **Dagger Pipeline: 306 lines** (Go code, workflow & testing)
+- Wrapper Scripts: 40 lines (deploy.sh with Docker build)
+- **Total: 746 lines** (6 files)
 
 ### KubeVela Approach (Per Application)
 - Application Definition: 258 lines (1 file, includes everything)
 - **Total: 258 lines**
 
 ### Code Reduction
-- **Lines saved**: 483 lines (65% reduction)
+- **Lines saved**: 488 lines (65% reduction)
 - **Files reduced**: From 6 to 1 (83% reduction)
-- **Testing code**: 36 lines YAML (KubeVela) vs 124 lines Go (Traditional) - 71% less
-- **Programming**: 0 lines code (KubeVela) vs 310 lines Go (Traditional)
+- **Testing approach**: Built-in workflow steps vs custom test infrastructure
+- **Programming**: 0 lines code (KubeVela) vs 306 lines Go (Imperative)
 
 ## When to Use Each
 
-**Traditional Approach:**
-- Team already deeply invested in Terraform
-- Need explicit state file management
-- Prefer code-based CI/CD (Dagger)
-- Simple single-environment deployments
+**Imperative:** Deep Terraform investment, explicit state management, code-based CI/CD preference
 
-**KubeVela Approach:**
-- Platform engineering teams building internal developer platforms
-- Multi-environment deployments with progressive delivery
-- Want to reduce tooling complexity
-- Kubernetes-native workflows preferred
+**KubeVela:** Platform engineering, multi-environment progressive delivery, reduced tooling complexity, Kubernetes-native declarative approach
 
-## Cleanup Comparison
+## Cleanup
 
-### Traditional Approach
+**Imperative:** `./cleanup.sh` - Custom script (~110 lines) with manual bucket emptying
 
-**Complete cleanup:**
-```bash
-cd traditional
-./cleanup.sh
-```
-
-**What it does:**
-- Deletes K8s resources from all environments (dev, staging, prod)
-- Empties S3 bucket (required before deletion)
-- Runs `terraform destroy` to delete AWS resources
-- Removes local Docker images
-
-**Requires:**
-- Custom cleanup script (~110 lines)
-- AWS CLI to empty bucket
-- Terraform for infrastructure deletion
-- Manual kubectl commands for K8s cleanup
-
-### KubeVela Approach
-
-**Complete cleanup:**
-```bash
-vela delete kv-product-catalog
-kubectl delete namespace dev staging prod
-```
-
-**What it does:**
-- Deletes application (all K8s resources automatically)
-- Crossplane automatically deletes S3 bucket (even with objects)
-- No manual bucket emptying required
-- No separate infrastructure cleanup
-
-**Requires:**
-- Built-in vela command (0 additional lines)
-- Crossplane handles AWS cleanup automatically
-
-### Cleanup Comparison Summary
-
-| Aspect | Traditional | KubeVela | Winner |
-|--------|-------------|----------|--------|
-| **Command** | `./cleanup.sh` | `vela delete kv-product-catalog` | Tie |
-| **Script Required** | Yes (~110 lines) | No (built-in) | **KubeVela** |
-| **Bucket Emptying** | Manual (AWS CLI) | Automatic | **KubeVela** |
-| **Multi-Environment** | One script handles all | One command handles all | Tie |
-| **Error Handling** | Custom logic needed | Built-in | **KubeVela** |
-| **Declarative** | Imperative script | Declarative | **KubeVela** |
+**KubeVela:** `vela delete kv-product-catalog` - Automatic cleanup via Crossplane
