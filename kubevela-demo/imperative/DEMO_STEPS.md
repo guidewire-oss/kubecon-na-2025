@@ -18,21 +18,21 @@ source .env.aws
 ### Recommended: Dagger Pipeline (via deploy.sh wrapper)
 
 ```bash
-cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/imperative
 
 # Deploy to dev (default)
-./deploy.sh dev v1.0.0-traditional
+./deploy.sh dev v1.0.0-imperative
 
 # Deploy to other environments
-./deploy.sh staging v1.0.0-traditional
-./deploy.sh prod v1.0.0-traditional
+./deploy.sh staging v1.0.0-imperative
+./deploy.sh prod v1.0.0-imperative
 ```
 
 **What it does:**
 1. Loads AWS credentials from `../../.env.aws`
 2. Runs Dagger pipeline (Go-based workflow) that:
-   - Executes Terraform to create S3 bucket (`tenant-atlantis-product-images-traditional`)
-   - Builds and pushes Docker image (`v1.0.0-traditional`)
+   - Executes Terraform to create S3 bucket (`tenant-atlantis-product-images-imperative`)
+   - Builds and pushes Docker image (`v1.0.0-imperative`)
    - Deploys K8s manifests (Deployment, Service, HPA)
    - Runs functional API tests (POST + GET)
 
@@ -46,8 +46,8 @@ cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
 
 ```bash
 # Run Dagger directly (without wrapper)
-cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
-export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/imperative
+export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-imperative
 source ../../.env.aws  # Load credentials
 cd dagger && go run main.go
 ```
@@ -55,17 +55,17 @@ cd dagger && go run main.go
 ### Manual Steps
 
 ```bash
-cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/imperative
 
 # 1. Terraform
 cd terraform && terraform init && terraform apply -auto-approve && cd ..
 
 # 2. Build image
 cd ../app
-DOCKER_BUILDKIT=0 docker build -t product-catalog-api:v1.0.0-traditional .
-docker tag product-catalog-api:v1.0.0-traditional localhost:5000/product-catalog-api:v1.0.0-traditional
-docker push localhost:5000/product-catalog-api:v1.0.0-traditional
-cd ../traditional
+DOCKER_BUILDKIT=0 docker build -t imp-product-catalog:v1.0.0-imperative .
+docker tag imp-product-catalog:v1.0.0-imperative localhost:5000/imp-product-catalog:v1.0.0-imperative
+docker push localhost:5000/imp-product-catalog:v1.0.0-imperative
+cd ../imperative
 
 # 3. Deploy K8s
 kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
@@ -73,22 +73,22 @@ kubectl apply -f k8s/ -n dev
 
 # 4. Verify
 kubectl get pods,svc,hpa -n dev
-kubectl rollout status deployment/product-catalog-api -n dev
+kubectl rollout status deployment/imp-product-catalog -n dev
 ```
 
 ## Verification
 
 ```bash
 kubectl get pods,svc,hpa -n dev
-kubectl logs -n dev deployment/product-catalog-api --tail=20
-aws s3 ls | grep traditional
+kubectl logs -n dev deployment/imp-product-catalog --tail=20
+aws s3 ls | grep imperative
 ```
 
 ## Troubleshooting
 
 **Image pull error:**
 ```bash
-curl http://localhost:5000/v2/product-catalog-api/tags/list
+curl http://localhost:5000/v2/imp-product-catalog/tags/list
 # Rebuild if needed
 ```
 

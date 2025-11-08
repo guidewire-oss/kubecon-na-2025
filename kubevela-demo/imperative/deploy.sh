@@ -5,7 +5,7 @@
 set -e
 
 ENVIRONMENT="${1:-dev}"
-IMAGE_TAG="${2:-v1.0.0-traditional}"
+IMAGE_TAG="${2:-v1.0.0-imperative}"
 
 echo "=== Traditional Approach: Dagger-based Deployment ==="
 echo "Environment: $ENVIRONMENT"

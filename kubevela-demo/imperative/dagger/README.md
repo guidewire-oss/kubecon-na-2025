@@ -9,8 +9,8 @@ Modern CI/CD alternative to bash scripts.
 curl -L https://dl.dagger.io/dagger/install.sh | sudo sh
 
 # Run pipeline from traditional/ directory (so Dagger can mount ./terraform and ./k8s)
-cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/traditional
-export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-traditional
+cd /workspaces/workspace/kubecon-NA-2025/kubevela-demo/imperative
+export ENVIRONMENT=dev IMAGE_TAG=v1.0.0-imperative
 cd dagger && go mod download && go run main.go
 ```
 

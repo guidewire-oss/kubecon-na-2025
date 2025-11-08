@@ -93,7 +93,7 @@ kubectl logs -n crossplane-system -l pkg.crossplane.io/provider=provider-aws-dyn
 - Or stop services using ports 6443, 8090
 
 **Problem:** kubectl context not switching
-- Manually switch: `kubectl config use-context k3d-kubecon-demo`
+- Manually switch: `kubectl config use-context k3d-kubecon-NA25`
 
 **Problem:** CRDs not appearing
 - Wait longer (can take 1-2 minutes)
@@ -110,7 +110,7 @@ jupyter notebook "01-OAM-cleanup.ipynb"
 ```bash
 jupyter notebook "00-Env-cleanup.ipynb"
 # OR manually
-k3d cluster delete kubecon-demo
+k3d cluster delete kubecon-NA25
 ```
 
 ## Architecture

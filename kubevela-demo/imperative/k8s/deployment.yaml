@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: product-catalog-api
+  name: imp-product-catalog
   labels:
-    app: product-catalog-api
+    app: imp-product-catalog
     component: backend
-    version: v1.0.0-traditional
+    version: v1.0.0-imperative
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: product-catalog-api
+      app: imp-product-catalog
   template:
     metadata:
       labels:
-        app: product-catalog-api
+        app: imp-product-catalog
         component: backend
-        version: v1.0.0-traditional
+        version: v1.0.0-imperative
     spec:
       serviceAccountName: product-api-sa
 
@@ -30,7 +30,7 @@ spec:
 
       containers:
       - name: api
-        image: k3d-registry.localhost:5000/product-catalog-api:v1.0.0-traditional
+        image: k3d-registry.localhost:5000/imp-product-catalog:v1.0.0-imperative
         imagePullPolicy: IfNotPresent
 
         ports:

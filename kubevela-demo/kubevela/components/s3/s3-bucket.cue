@@ -47,7 +47,7 @@ template: {
             versioning: parameter.versioning
             tags: {
                 "gwcp:v1:dept":                            "000"
-                "gwcp:v1:provisioned-resource:created-by": "kubecon-demo"
+                "gwcp:v1:provisioned-resource:created-by": "kubecon-NA25"
                 "gwcp:v1:quadrant:name":                   "dev"
                 "gwcp:v1:resource-type:managed-by":        "pod-atlantis"
                 "gwcp:v1:resource-type:managed-tool":      "crossplane"

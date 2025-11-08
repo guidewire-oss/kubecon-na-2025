@@ -37,22 +37,22 @@ This demo showcases KubeVela's unified application delivery model compared to tr
 
 ```bash
 cd app
-DOCKER_BUILDKIT=0 docker build -t product-catalog-api:v1.0.0 .
-docker tag product-catalog-api:v1.0.0 localhost:5000/product-catalog-api:v1.0.0
-docker push localhost:5000/product-catalog-api:v1.0.0
+DOCKER_BUILDKIT=0 docker build -t kv-product-cat-api:v1.0.0 .
+docker tag kv-product-cat-api:v1.0.0 localhost:5000/kv-product-cat-api:v1.0.0
+docker push localhost:5000/kv-product-cat-api:v1.0.0
 ```
 
 #### 2. Traditional Approach (Optional)
 
 ```bash
-cd traditional
-./deploy.sh dev v1.0.0-traditional
+cd imperative
+./deploy.sh dev v1.0.0-imperative
 kubectl get pods,svc,hpa -n dev
 ```
 
 **Note:** Uses Dagger (Go-based portable CI/CD) for workflow automation.
 
-See [`traditional/DEMO_STEPS.md`](traditional/DEMO_STEPS.md) for details.
+See [`imperative/DEMO_STEPS.md`](imperative/DEMO_STEPS.md) for details.
 
 #### 3. KubeVela Approach
 
@@ -61,7 +61,7 @@ cd kubevela
 ./step3-deploy.sh
 
 # Check status
-vela status product-catalog
+vela status kv-product-catalog
 kubectl get pods,hpa -n dev
 ```
 
@@ -69,11 +69,11 @@ kubectl get pods,hpa -n dev
 
 ```bash
 # Deploy to staging
-vela workflow resume product-catalog && sleep 30
+vela workflow resume kv-product-catalog && sleep 30
 kubectl get pods,hpa -n staging
 
 # Deploy to production
-vela workflow resume product-catalog && sleep 60
+vela workflow resume kv-product-catalog && sleep 60
 kubectl get pods,hpa -n prod
 ```
 
@@ -104,7 +104,7 @@ kubectl get pods,hpa -n prod
 
 ## Troubleshooting
 
-**Workflow Resume:** Use application name: `vela workflow resume product-catalog`
+**Workflow Resume:** Use application name: `vela workflow resume kv-product-catalog`
 
 **Image Pull Issues:** Verify registry with `k3d registry list` and `curl http://localhost:5000/v2/_catalog`
 
@@ -112,12 +112,12 @@ kubectl get pods,hpa -n prod
 
 **KubeVela:**
 ```bash
-vela delete product-catalog
+vela delete kv-product-catalog
 kubectl delete namespace dev staging prod
 ```
 
 **Traditional:**
 ```bash
-cd traditional
+cd imperative
 ./cleanup.sh
 ```

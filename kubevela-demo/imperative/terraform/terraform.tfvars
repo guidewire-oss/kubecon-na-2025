@@ -2,7 +2,7 @@
 aws_region = "us-west-2"
 
 # S3 Bucket Configuration
-bucket_name        = "tenant-atlantis-product-images-traditional"
+bucket_name        = "tenant-atlantis-product-images-imperative"
 enable_versioning  = false
 
 # IAM Configuration

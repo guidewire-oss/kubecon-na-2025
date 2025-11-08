@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "bucket_name" {
   description = "Name of the S3 bucket for product images"
   type        = string
-  default     = "tenant-atlantis-product-images-traditional"
+  default     = "tenant-atlantis-product-images-imperative"
 }
 
 variable "enable_versioning" {
@@ -57,7 +57,7 @@ variable "common_tags" {
   type        = map(string)
   default = {
     "gwcp:v1:dept"                            = "000"
-    "gwcp:v1:provisioned-resource:created-by" = "kubecon-demo"
+    "gwcp:v1:provisioned-resource:created-by" = "kubecon-NA25"
     "gwcp:v1:quadrant:name"                   = "dev"
     "gwcp:v1:resource-type:managed-by"        = "pod-atlantis"
     "gwcp:v1:resource-type:managed-tool"      = "terraform"

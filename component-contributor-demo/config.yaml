@@ -3,7 +3,7 @@
 
 cluster:
   # Name of the k3d cluster
-  name: "kubecon-demo"
+  name: "kubecon-NA25"
   # Kubernetes API port
   api_port: 6443
   # HTTP port for ingress (mapped to LoadBalancer)

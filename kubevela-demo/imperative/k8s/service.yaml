@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: product-catalog-api
+  name: imp-product-catalog
   labels:
-    app: product-catalog-api
+    app: imp-product-catalog
     component: backend
 spec:
   type: ClusterIP
   selector:
-    app: product-catalog-api
+    app: imp-product-catalog
   ports:
   - name: http
     port: 80

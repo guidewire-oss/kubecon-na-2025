@@ -1,22 +1,22 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: product-catalog
+  name: kv-product-catalog
   namespace: default
 spec:
   components:
     # Application Component
-    - name: product-api
+    - name: kv-product-cat-api
       type: webservice
       properties:
-        image: k3d-registry.localhost:5000/product-catalog-api:v1.0.0
+        image: k3d-registry.localhost:5000/kv-product-cat-api:v1.0.0
         imagePullPolicy: IfNotPresent
         ports:
           - port: 8080
             expose: true
         env:
           - name: S3_BUCKET_NAME
-            value: "tenant-atlantis-product-images"
+            value: "tenant-atlantis-kv-prodcat-images"
           - name: AWS_REGION
             value: "us-west-2"
           - name: PORT
@@ -68,10 +68,10 @@ spec:
               memory: "256Mi"
 
     # S3 Bucket Component
-    - name: product-images
-      type: simple-s3
+    - name: kv-prodcat-images
+      type: s3
       properties:
-        name: product-images
+        name: kv-prodcat-images
         region: us-west-2
         versioning: false
 
@@ -103,7 +103,7 @@ spec:
       type: override
       properties:
         components:
-          - name: product-api
+          - name: kv-product-cat-api
             traits:
               - type: hpa
                 properties:
@@ -114,7 +114,7 @@ spec:
       type: override
       properties:
         components:
-          - name: product-api
+          - name: kv-product-cat-api
             traits:
               - type: hpa
                 properties:
@@ -125,7 +125,7 @@ spec:
       type: override
       properties:
         components:
-          - name: product-api
+          - name: kv-product-cat-api
             traits:
               - type: hpa
                 properties:
@@ -148,7 +148,7 @@ spec:
         dependsOn: ["deploy-dev"]
         timeout: "60s"
         properties:
-          url: "http://product-api.dev.svc.cluster.local:8080/products"
+          url: "http://kv-product-cat-api.dev.svc.cluster.local:8080/products"
           method: "POST"
           body:
             name: "workflow-test-product"
@@ -158,7 +158,7 @@ spec:
           - name: productIdDev
             valueFrom: "response.id"
           - name: productUrlDev
-            valueFrom: '"http://product-api.dev.svc.cluster.local:8080/products/" + response.id'
+            valueFrom: '"http://kv-product-cat-api.dev.svc.cluster.local:8080/products/" + response.id'
 
       # Functional test: Retrieve the created product in dev
       - name: verify-test-product-dev
@@ -190,7 +190,7 @@ spec:
         dependsOn: ["deploy-staging"]
         timeout: "60s"
         properties:
-          url: "http://product-api.staging.svc.cluster.local:8080/products"
+          url: "http://kv-product-cat-api.staging.svc.cluster.local:8080/products"
           method: "POST"
           body:
             name: "workflow-test-product"
@@ -200,7 +200,7 @@ spec:
           - name: productIdStaging
             valueFrom: "response.id"
           - name: productUrlStaging
-            valueFrom: '"http://product-api.staging.svc.cluster.local:8080/products/" + response.id'
+            valueFrom: '"http://kv-product-cat-api.staging.svc.cluster.local:8080/products/" + response.id'
 
       # Functional test: Retrieve the created product in staging
       - name: verify-test-product-staging
@@ -234,7 +234,7 @@ spec:
         dependsOn: ["deploy-prod"]
         timeout: "60s"
         properties:
-          url: "http://product-api.prod.svc.cluster.local:8080/products"
+          url: "http://kv-product-cat-api.prod.svc.cluster.local:8080/products"
           method: "POST"
           body:
             name: "workflow-test-product"
@@ -244,7 +244,7 @@ spec:
           - name: productIdProd
             valueFrom: "response.id"
           - name: productUrlProd
-            valueFrom: '"http://product-api.prod.svc.cluster.local:8080/products/" + response.id'
+            valueFrom: '"http://kv-product-cat-api.prod.svc.cluster.local:8080/products/" + response.id'
 
       # Functional test: Retrieve the created product in production
       - name: verify-test-product-prod

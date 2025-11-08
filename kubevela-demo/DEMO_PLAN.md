@@ -32,9 +32,11 @@ A microservice that:
 │              KubeVela Application                       │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
+
+
 │  Components:                                            │
-│    ├─ product-api (webservice)                         │
-│    └─ product-images (simple-s3)                       │
+│    ├─ kv-product-cat-api (webservice)                  │
+│    └─ kv-prodcat-images (simple-s3)                    │
 │                                                          │
 │  Traits:                                                │
 │    ├─ hpa (horizontal pod autoscaler)                  │
@@ -86,7 +88,7 @@ A microservice that:
     backend "s3" {
       # State management configuration
       bucket = "terraform-state-bucket"
-      key    = "product-catalog/terraform.tfstate"
+      key    = "kv-product-catalog/terraform.tfstate"
       region = "us-west-2"
     }
   }
@@ -100,23 +102,23 @@ A microservice that:
   ```hcl
   # S3 Bucket for product images
   resource "aws_s3_bucket" "product_images" {
-    bucket = "tenant-atlantis-product-images"
+    bucket = "tenant-atlantis-kv-prodcat-images"
 
     tags = {
       "gwcp:v1:dept"                            = "000"
-      "gwcp:v1:provisioned-resource:created-by" = "kubecon-demo"
+      "gwcp:v1:provisioned-resource:created-by" = "kubecon-NA25"
       "gwcp:v1:quadrant:name"                   = "dev"
       "gwcp:v1:resource-type:managed-by"        = "pod-atlantis"
       "gwcp:v1:resource-type:managed-tool"      = "terraform"
       "gwcp:v1:star-system:name"                = "kubecon"
       "gwcp:v1:tenant:name"                     = "atlantis"
-      "gwcp:v1:tenant:app-name"                 = "product-catalog"
+      "gwcp:v1:tenant:app-name"                 = "kv-product-catalog"
     }
   }
 
   # IAM Role for pod
   resource "aws_iam_role" "product_api_role" {
-    name = "tenant-atlantis-product-api-role"
+    name = "tenant-atlantis-kv-product-cat-api-role"
     # ... assume role policy
   }
 
@@ -205,9 +207,9 @@ CMD ["python", "app.py"]
 **Local Registry in k3d:**
 ```bash
 # k3d cluster already includes registry
-# Push to: localhost:5000/product-api:v1.0.0
-docker build -t localhost:5000/product-api:v1.0.0 .
-docker push localhost:5000/product-api:v1.0.0
+# Push to: localhost:5000/kv-product-cat-api:v1.0.0
+docker build -t localhost:5000/kv-product-cat-api:v1.0.0 .
+docker push localhost:5000/kv-product-cat-api:v1.0.0
 ```
 
 **AWS Resources (Only External Dependencies):**
@@ -377,7 +379,7 @@ docker push localhost:5000/product-api:v1.0.0
 
 #### c. Application Definition
 - `application.yaml` - **The star of the show!**
-  - Components: product-api (webservice), product-images (simple-s3)
+  - Components: kv-product-cat-api (webservice), kv-prodcat-images (simple-s3)
   - Traits: hpa, security-context, resource
   - Workflow: deploy-dev → approval → deploy-staging → approval → deploy-prod
   - Policy: topology for multi-namespace deployment

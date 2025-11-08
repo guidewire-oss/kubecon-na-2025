@@ -60,7 +60,7 @@ sleep 10
 # Check status
 echo ""
 echo "=== Application Status ==="
-vela status product-catalog
+vela status kv-product-catalog
 
 echo ""
 echo "=== Kubernetes Resources (dev) ==="
@@ -74,13 +74,13 @@ echo ""
 echo "Next steps for Progressive Delivery:"
 echo ""
 echo "  # Deploy to staging (after dev health checks pass):"
-echo "  vela workflow resume product-catalog && sleep 30"
+echo "  vela workflow resume kv-product-catalog && sleep 30"
 echo "  kubectl get pods,hpa -n staging"
 echo ""
 echo "  # Deploy to production (after staging health checks pass):"
-echo "  vela workflow resume product-catalog && sleep 60"
+echo "  vela workflow resume kv-product-catalog && sleep 60"
 echo "  kubectl get pods,hpa -n prod"
 echo ""
 echo "  # View complete status:"
-echo "  vela status product-catalog"
+echo "  vela status kv-product-catalog"
 echo ""

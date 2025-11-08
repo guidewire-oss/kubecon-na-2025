@@ -53,7 +53,7 @@ func deploy(ctx context.Context) error {
 
 	// Step 2: Build and Push Docker Image
 	fmt.Println("\nStep 2: Build Docker Image")
-	imageRef := fmt.Sprintf("localhost:5000/product-catalog-api:%s", imageTag)
+	imageRef := fmt.Sprintf("localhost:5000/imp-product-catalog:%s", imageTag)
 	if err := buildAndPushImage(ctx, client, imageRef); err != nil {
 		return fmt.Errorf("image build failed: %w", err)
 	}
@@ -188,7 +188,7 @@ func deployToKubernetes(ctx context.Context, client *dagger.Client, environment,
 
 	// Wait for rollout
 	_, err = kubectl.
-		WithExec([]string{"rollout", "status", "deployment/product-catalog-api", "-n", environment, "--timeout=120s"}).
+		WithExec([]string{"rollout", "status", "deployment/imp-product-catalog", "-n", environment, "--timeout=120s"}).
 		Sync(ctx)
 	if err != nil {
 		fmt.Printf("  Warning: rollout status check: %v\n", err)

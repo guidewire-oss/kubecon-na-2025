@@ -3,10 +3,10 @@ kind: ConfigMap
 metadata:
   name: product-api-config
   labels:
-    app: product-catalog-api
+    app: imp-product-catalog
     component: backend
 data:
   AWS_REGION: "us-west-2"
-  S3_BUCKET_NAME: "tenant-atlantis-product-images-traditional"
+  S3_BUCKET_NAME: "tenant-atlantis-product-images-imperative"
   PORT: "8080"
   LOG_LEVEL: "INFO"

@@ -39,9 +39,9 @@ for ENV in dev staging prod; do
     # Check if namespace exists
     if kubectl get namespace $ENV &>/dev/null; then
         # Delete resources by type
-        kubectl delete hpa product-catalog-api-hpa -n $ENV --ignore-not-found=true
-        kubectl delete service product-catalog-api -n $ENV --ignore-not-found=true
-        kubectl delete deployment product-catalog-api -n $ENV --ignore-not-found=true
+        kubectl delete hpa imp-product-catalog-hpa -n $ENV --ignore-not-found=true
+        kubectl delete service imp-product-catalog -n $ENV --ignore-not-found=true
+        kubectl delete deployment imp-product-catalog -n $ENV --ignore-not-found=true
         kubectl delete configmap product-api-config -n $ENV --ignore-not-found=true
         kubectl delete serviceaccount product-api-sa -n $ENV --ignore-not-found=true
         echo "  ✓ $ENV resources deleted"
@@ -55,7 +55,7 @@ echo ""
 # Clean up AWS infrastructure
 echo "=== Cleaning up AWS infrastructure ==="
 
-BUCKET_NAME="tenant-atlantis-product-images-traditional"
+BUCKET_NAME="tenant-atlantis-product-images-imperative"
 
 # Empty S3 bucket before Terraform destroy (required for non-empty buckets)
 echo "Emptying S3 bucket: $BUCKET_NAME"
@@ -93,9 +93,9 @@ echo ""
 
 # Optional: Clean up local Docker images
 echo "=== Cleaning up local Docker images ==="
-IMAGE_TAG="v1.0.0-traditional"
-docker rmi localhost:5000/product-catalog-api:${IMAGE_TAG} 2>/dev/null && echo "  ✓ Removed localhost:5000/product-catalog-api:${IMAGE_TAG}" || echo "  ✓ Image not found (skipping)"
-docker rmi product-catalog-api:${IMAGE_TAG} 2>/dev/null && echo "  ✓ Removed product-catalog-api:${IMAGE_TAG}" || echo "  ✓ Image not found (skipping)"
+IMAGE_TAG="v1.0.0-imperative"
+docker rmi localhost:5000/imp-product-catalog:${IMAGE_TAG} 2>/dev/null && echo "  ✓ Removed localhost:5000/imp-product-catalog:${IMAGE_TAG}" || echo "  ✓ Image not found (skipping)"
+docker rmi imp-product-catalog:${IMAGE_TAG} 2>/dev/null && echo "  ✓ Removed imp-product-catalog:${IMAGE_TAG}" || echo "  ✓ Image not found (skipping)"
 
 echo ""
 echo "=== Cleanup Complete ==="

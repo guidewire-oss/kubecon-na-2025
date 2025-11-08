@@ -34,7 +34,7 @@ python app.py
 
 ```bash
 # Build the image
-docker build -t product-catalog-api:v1.0.0 .
+docker build -t kv-product-cat-api:v1.0.0 .
 
 # Run locally
 docker run -p 8080:8080 \
@@ -42,11 +42,11 @@ docker run -p 8080:8080 \
   -e AWS_REGION=us-west-2 \
   -e AWS_ACCESS_KEY_ID=your_access_key \
   -e AWS_SECRET_ACCESS_KEY=your_secret_key \
-  product-catalog-api:v1.0.0
+  kv-product-cat-api:v1.0.0
 
 # Push to k3d local registry
-docker tag product-catalog-api:v1.0.0 localhost:5000/product-catalog-api:v1.0.0
-docker push localhost:5000/product-catalog-api:v1.0.0
+docker tag kv-product-cat-api:v1.0.0 localhost:5000/kv-product-cat-api:v1.0.0
+docker push localhost:5000/kv-product-cat-api:v1.0.0
 ```
 
 ## Environment Variables

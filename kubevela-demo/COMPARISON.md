@@ -17,7 +17,7 @@
 **Structure:**
 ```
 terraform/           # 243 lines (one-time infrastructure)
-  - S3 bucket: tenant-atlantis-product-images-traditional
+  - S3 bucket: tenant-atlantis-product-images-imperative
   - IAM: Role ARN configured via ServiceAccount annotation
 
 k8s/                # 188 lines (per-app deployment)
@@ -145,7 +145,7 @@ policies:
     type: override
     properties:
       components:
-        - name: product-api
+        - name: kv-product-cat-api
           traits:
             - type: hpa
               properties:
@@ -186,7 +186,7 @@ workflow:
       dependsOn: ["deploy-dev"]
       timeout: "60s"
       properties:
-        url: "http://product-api.dev.svc.cluster.local:8080/products"
+        url: "http://kv-product-cat-api.dev.svc.cluster.local:8080/products"
         method: "POST"
         body:
           name: "workflow-test-product"
@@ -205,7 +205,7 @@ workflow:
         - from: productId
           parameterKey: ""
       properties:
-        url: "http://product-api.dev.svc.cluster.local:8080/products/{{ inputs.productId }}"
+        url: "http://kv-product-cat-api.dev.svc.cluster.local:8080/products/{{ inputs.productId }}"
         method: "GET"
 
     # Only proceeds if functional tests pass
@@ -237,8 +237,8 @@ To avoid conflicts, the traditional approach uses different names:
 
 | Resource | Traditional | KubeVela |
 |----------|-------------|----------|
-| S3 Bucket | `tenant-atlantis-product-images-traditional` | `tenant-atlantis-product-images` |
-| Image Tag | `v1.0.0-traditional` | `v1.0.0` |
+| S3 Bucket | `tenant-atlantis-product-images-imperative` | `tenant-atlantis-kv-prodcat-images` |
+| Image Tag | `v1.0.0-imperative` | `v1.0.0` |
 | IAM Role | Role ARN placeholder (injected at deploy) | Crossplane-managed |
 
 ## Key Advantages of KubeVela
@@ -313,7 +313,7 @@ cd traditional
 
 **Complete cleanup:**
 ```bash
-vela delete product-catalog
+vela delete kv-product-catalog
 kubectl delete namespace dev staging prod
 ```
 
@@ -331,7 +331,7 @@ kubectl delete namespace dev staging prod
 
 | Aspect | Traditional | KubeVela | Winner |
 |--------|-------------|----------|--------|
-| **Command** | `./cleanup.sh` | `vela delete product-catalog` | Tie |
+| **Command** | `./cleanup.sh` | `vela delete kv-product-catalog` | Tie |
 | **Script Required** | Yes (~110 lines) | No (built-in) | **KubeVela** |
 | **Bucket Emptying** | Manual (AWS CLI) | Automatic | **KubeVela** |
 | **Multi-Environment** | One script handles all | One command handles all | Tie |

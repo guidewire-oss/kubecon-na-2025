@@ -1,7 +1,7 @@
 Name: "simple-dynamodb"
 DepartmentCode: 000
 MaintainedBy: "platform-team"
-CreatedBy: "kubecon-demo"
+CreatedBy: "kubecon-NA25"
 Stage: "alpha"
 Dependencies: ["crossplane-aws-provider"]
 Description: "Simple DynamoDB table component for KubeCon demo"
