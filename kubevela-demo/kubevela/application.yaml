@@ -69,7 +69,7 @@ spec:
 
     # S3 Bucket Component
     - name: kv-prodcat-images
-      type: s3
+      type: simple-s3
       properties:
         name: kv-prodcat-images
         region: us-west-2

@@ -2,18 +2,11 @@
 
 ## Executive Summary
 
-This demo showcases the power and simplicity of KubeVela's unified application delivery model compared to traditional approaches. We'll demonstrate a real-world application deployment that includes:
-- Kubernetes resources (Deployment, Service)
-- AWS infrastructure (S3 bucket)
-- Application lifecycle management (workflow, policies, traits)
+KubeVela's unified application delivery model vs traditional approaches: Real-world deployment with K8s resources, AWS S3, and full lifecycle management.
 
-## Demo Scenario: "Product Catalog Service"
+## Demo Scenario: Product Catalog Service
 
-A microservice that:
-1. Runs a containerized API (K8s Deployment + Service)
-2. Stores product images in S3
-3. Requires multi-stage deployment (dev → staging → prod)
-4. Needs auto-scaling and monitoring
+Containerized API with S3 storage, multi-stage deployment (dev → staging → prod), auto-scaling, and monitoring.
 
 ## Comparison Matrix
 
@@ -27,34 +20,7 @@ A microservice that:
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────┐
-│              KubeVela Application                       │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-
-
-│  Components:                                            │
-│    ├─ kv-product-cat-api (webservice)                  │
-│    └─ kv-prodcat-images (simple-s3)                    │
-│                                                          │
-│  Traits:                                                │
-│    ├─ hpa (horizontal pod autoscaler)                  │
-│    ├─ security-context (pod security settings)         │
-│    └─ resource (CPU/memory limits & requests)          │
-│                                                          │
-│  Workflow:                                              │
-│    ├─ deploy-dev                                        │
-│    ├─ manual-approval                                   │
-│    ├─ deploy-staging                                    │
-│    ├─ health-check                                      │
-│    └─ deploy-prod                                       │
-│                                                          │
-│  Policy:                                                │
-│    └─ topology (multi-cluster)                         │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
+**KubeVela Application:** Components (webservice + S3), Traits (HPA, security, resources), Workflow (dev → staging → prod with approvals), Policies (topology + overrides)
 
 ## Detailed Comparison Scenarios
 
@@ -149,25 +115,25 @@ A microservice that:
   // Implements http.Post() and http.Get() for testing
   ```
 
-**Total: 721 lines across 10 files in 3 different tools** (223 Terraform + 188 K8s + 310 Dagger)
+**Total: 746 lines across 6 files in 3 different tools** (244 Terraform + 196 K8s + 306 Dagger)
 
 **Pain points:**
 - Context switching between K8s YAML, HCL, and Go (Dagger)
 - Terraform state management complexity
-- Pipeline code complexity (310 lines of Go, including 124 for API testing)
+- Pipeline code complexity (306 lines of Go for workflow & testing)
 - Credential management across tools (AWS creds + kubeconfig)
 - Manual coordination between infrastructure and application
 - No unified view of application
-- Separate HPA, SecurityContext, and Resource manifests to manage
+- Separate manifests for HPA, SecurityContext, and Resources
 - Manual orchestration of multi-stage deployments
-- Testing requires programming skills (Go)
+- Testing requires Go programming skills
 
 ### Scenario 2: KubeVela (The Better Way)
 
 **What you need:**
-- application.yaml (255 lines including functional API tests)
+- application.yaml (258 lines including functional API tests)
 - Component definitions (reusable, platform-provided)
-- **Total: 255 lines in 1 file**
+- **Total: 258 lines in 1 file**
 
 **Benefits:**
 - Single source of truth
@@ -225,7 +191,7 @@ docker push localhost:5000/kv-product-cat-api:v1.0.0
 
 ### Part 1: The Traditional Way (Show the Pain)
 
-**Show the complete traditional stack** (10 files, 597 lines):
+**Show the complete traditional stack** (6 files, 746 lines):
 
 1. **Terraform Infrastructure** (HCL files)
    - provider.tf with version constraints
@@ -255,7 +221,7 @@ docker push localhost:5000/kv-product-cat-api:v1.0.0
 
 ### Part 2: The KubeVela Way (Show the Power)
 
-1. **Show single application.yaml** (1 file, 255 lines vs 6 files, 498 lines)
+1. **Show single application.yaml** (1 file, 258 lines vs 6 files, 746 lines)
    - Clean, business-focused
    - Components with defaults
    - Built-in workflow with functional API tests
@@ -402,11 +368,11 @@ docker push localhost:5000/kv-product-cat-api:v1.0.0
 
 By the end of the demo, the audience should understand:
 
-1. ✅ KubeVela reduces complexity (1 file vs 6 files per app, 83% fewer files, 49% less code)
+1. ✅ KubeVela reduces complexity (1 file vs 6 files per app, 83% fewer files, 65% less code)
 2. ✅ Infrastructure can be treated as components
 3. ✅ Workflows eliminate external CI/CD for deployments
 4. ✅ Built-in functional API tests validate actual business logic (POST + GET)
-5. ✅ Declarative testing: YAML vs Go code (12 vs 124 lines per test)
+5. ✅ Declarative testing: YAML vs Go code
 6. ✅ Data flows between workflow steps (outputs → inputs)
 7. ✅ Traits provide reusable cross-cutting concerns
 8. ✅ Developers focus on business value, not K8s details or programming
@@ -477,7 +443,7 @@ By the end of the demo, the audience should understand:
 - KubeVela and Crossplane installed
 
 ### Key Demo Points
-- Show code reduction: 641 lines → 258 lines (60% less)
-- Highlight single file vs 7 files (86% fewer)
+- Show code reduction: 746 lines → 258 lines (65% less)
+- Highlight single file vs 6 files (83% fewer)
 - Emphasize built-in workflow with functional tests
 - Demonstrate progressive delivery across environments
