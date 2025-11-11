@@ -16,7 +16,7 @@ env/
 
 # Generated files from notebooks
 test/
-setup/
+# setup/
 
 # Python cache
 __pycache__/
