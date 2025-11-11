@@ -1,0 +1,12 @@
+name: crossplane-aws
+version: 1.0.0
+description: Crossplane AWS Provider for managing AWS resources
+url: https://github.com/crossplane-contrib/provider-aws
+tags:
+  - aws
+  - cloud
+  - infrastructure
+  - provider
+deployTo:
+  control-plane: true
+invisible: false

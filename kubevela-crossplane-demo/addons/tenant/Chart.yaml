@@ -1,0 +1,10 @@
+annotations:
+  addon.name: tenant
+apiVersion: v2
+appVersion: 1.0.0
+description: An addon for KubeVela.
+keywords:
+- my-tag
+name: tenant
+type: library
+version: 1.0.0

@@ -1,0 +1,14 @@
+annotations:
+  addon.name: crossplane-aws
+apiVersion: v2
+appVersion: 1.0.0
+description: Crossplane AWS Provider for managing AWS resources
+home: https://github.com/crossplane-contrib/provider-aws
+keywords:
+- aws
+- cloud
+- infrastructure
+- provider
+name: crossplane-aws
+type: library
+version: 1.0.0

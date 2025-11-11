@@ -1,0 +1,15 @@
+annotations:
+  addon.name: crossplane
+apiVersion: v2
+appVersion: 1.19.3
+description: Crossplane native installation without FluxCD dependency - an open source
+  Kubernetes add-on that enables platform teams to assemble infrastructure from multiple
+  vendors
+home: https://crossplane.io
+keywords:
+- infrastructure
+- control-plane
+- gitops
+name: crossplane
+type: library
+version: 1.19.3

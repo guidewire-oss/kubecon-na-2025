@@ -1,0 +1,49 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: s3-bucket-demo
+  namespace: default
+spec:
+  components:
+    - name: kubecon-demo-bucket
+      type: s3-bucket
+      properties:
+        region: us-west-2
+        bucketName: kubecon-demo-bkane
+        providerConfigRef: default
+      traits:
+        - type: s3-versioning
+          properties:
+            enabled: true
+        - type: s3-encryption
+          properties:
+            algorithm: AES256
+        - type: s3-public-access-block
+          properties:
+            blockPublicAcls: true
+            blockPublicPolicy: true
+            ignorePublicAcls: true
+            restrictPublicBuckets: true
+        - type: s3-tags
+          properties:
+            tags:
+              Environment: demo
+              Event: kubecon-2025
+              Owner: bkane
+              Purpose: crossplane-demo
+        - type: s3-lifecycle
+          properties:
+            rules:
+              - id: archive-old-objects
+                enabled: true
+                transition:
+                  - days: 30
+                    storageClass: STANDARD_IA
+                  - days: 90
+                    storageClass: GLACIER
+                expiration:
+                  days: 365
+              - id: cleanup-incomplete-uploads
+                enabled: true
+                abortIncompleteMultipartUpload:
+                  daysAfterInitiation: 7
