@@ -1,5 +1,6 @@
 "simple-dynamodb": {
     type: "component"
+    description: "A basic DynamoDB table component for KubeCon NA 2025."
     attributes: {
         workload: definition: {
             apiVersion: "demo.kubecon.io/v1alpha1"
@@ -65,8 +66,8 @@ template: {
         // +usage=Name of the DynamoDB table (will be prefixed with tenant-atlantis-)
         name: string
         
-        // +usage=AWS region
-        region: string
+        // +usage=AWS region default to us-west-2
+        region: *"us-west-2" | string
         
         // +usage=Hash key attribute name
         hashKey: string
