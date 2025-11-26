@@ -1,0 +1,307 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: s3-storage-app
+  namespace: default
+spec:
+  components:
+    # S3 Bucket Component (created first)
+    - name: app-storage-bucket
+      type: simple-s3
+      properties:
+        name: app-storage
+        region: us-west-2
+        versioning: false
+      outputs:
+        - name: bucketArn
+          valueFrom: output.status.bucketArn
+        - name: bucketName
+          valueFrom: output.status.bucketName
+        - name: bucketRegion
+          valueFrom: output.status.region
+
+    # Application Component (depends on S3 bucket)
+    - name: storage-api
+      type: webservice
+      properties:
+        image: k3d-registry.localhost:5000/kv-product-cat-api:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: S3_BUCKET_ARN
+            value: ""  # Will be populated from bucket output
+          - name: S3_BUCKET_NAME
+            value: ""  # Will be populated from bucket output
+          - name: AWS_REGION
+            value: ""  # Will be populated from bucket output
+          - name: PORT
+            value: "8080"
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: "/aws/credentials"
+        volumeMounts:
+          secret:
+            - name: aws-credentials
+              mountPath: /aws
+              secretName: aws-credentials
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      inputs:
+        - from: bucketArn
+          parameterKey: env[0].value
+        - from: bucketName
+          parameterKey: env[1].value
+        - from: bucketRegion
+          parameterKey: env[2].value
+      traits:
+        # Horizontal Pod Autoscaler
+        - type: hpa
+          properties:
+            min: 2
+            max: 10
+            cpuUtil: 70
+            memUtil: 80
+
+        # Security Context
+        - type: podsecuritycontext
+          properties:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+        # Resource Limits
+        - type: resource
+          properties:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+  # Policies
+  policies:
+    # Topology for dev environment
+    - name: topology-dev
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: dev
+
+    # Topology for staging environment
+    - name: topology-staging
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: staging
+
+    # Topology for prod environment
+    - name: topology-prod
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: prod
+
+    # Override configurations for dev environment
+    - name: override-dev
+      type: override
+      properties:
+        components:
+          # Override S3 bucket name for dev
+          - name: app-storage-bucket
+            properties:
+              name: app-storage-dev
+          # Override HPA for dev
+          - name: storage-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 1
+                  max: 3
+
+    # Override configurations for staging environment
+    - name: override-staging
+      type: override
+      properties:
+        components:
+          # Override S3 bucket name for staging
+          - name: app-storage-bucket
+            properties:
+              name: app-storage-staging
+          # Override HPA for staging
+          - name: storage-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 2
+                  max: 5
+
+    # Override configurations for prod environment
+    - name: override-prod
+      type: override
+      properties:
+        components:
+          # Override S3 bucket name for prod
+          - name: app-storage-bucket
+            properties:
+              name: app-storage-prod
+              region: us-east-1  # Different region for prod
+              versioning: true  # Ensure versioning is enabled in prod
+          # Override HPA for prod
+          - name: storage-api
+            traits:
+              - type: hpa
+                properties:
+                  min: 3
+                  max: 10
+
+  # Workflow for multi-stage deployment
+  workflow:
+    steps:
+      # Deploy S3 bucket to dev first
+      - name: deploy-bucket-dev
+        type: deploy
+        properties:
+          policies: ["topology-dev", "override-dev"]
+          auto: true
+
+      # Wait for bucket to be ready
+      - name: wait-bucket-dev
+        type: step-group
+        dependsOn: ["deploy-bucket-dev"]
+        subSteps:
+          - name: check-bucket-health-dev
+            type: apply-object
+            properties:
+              value:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: bucket-ready-dev
+                  namespace: dev
+                data:
+                  status: "checked"
+
+      # Deploy application to dev (after bucket is ready)
+      - name: deploy-app-dev
+        type: deploy
+        dependsOn: ["wait-bucket-dev"]
+        properties:
+          policies: ["topology-dev", "override-dev"]
+          auto: true
+
+      # Functional test: Health check in dev
+      - name: health-check-dev
+        type: request
+        dependsOn: ["deploy-app-dev"]
+        timeout: "60s"
+        properties:
+          url: "http://storage-api.dev.svc.cluster.local:8080/health"
+          method: "GET"
+
+      # Manual approval for staging
+      - name: approval-staging
+        type: suspend
+        dependsOn: ["health-check-dev"]
+
+      # Deploy S3 bucket to staging
+      - name: deploy-bucket-staging
+        type: deploy
+        dependsOn: ["approval-staging"]
+        properties:
+          policies: ["topology-staging", "override-staging"]
+          auto: true
+
+      # Wait for bucket to be ready in staging
+      - name: wait-bucket-staging
+        type: step-group
+        dependsOn: ["deploy-bucket-staging"]
+        subSteps:
+          - name: check-bucket-health-staging
+            type: apply-object
+            properties:
+              value:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: bucket-ready-staging
+                  namespace: staging
+                data:
+                  status: "checked"
+
+      # Deploy application to staging
+      - name: deploy-app-staging
+        type: deploy
+        dependsOn: ["wait-bucket-staging"]
+        properties:
+          policies: ["topology-staging", "override-staging"]
+          auto: true
+
+      # Functional test: Health check in staging
+      - name: health-check-staging
+        type: request
+        dependsOn: ["deploy-app-staging"]
+        timeout: "60s"
+        properties:
+          url: "http://storage-api.staging.svc.cluster.local:8080/health"
+          method: "GET"
+
+      # Manual approval for production
+      - name: approval-prod
+        type: suspend
+        dependsOn: ["health-check-staging"]
+        properties:
+          duration: "1m"
+
+      # Deploy S3 bucket to production
+      - name: deploy-bucket-prod
+        type: deploy
+        dependsOn: ["approval-prod"]
+        properties:
+          policies: ["topology-prod", "override-prod"]
+          auto: true
+
+      # Wait for bucket to be ready in production
+      - name: wait-bucket-prod
+        type: step-group
+        dependsOn: ["deploy-bucket-prod"]
+        subSteps:
+          - name: check-bucket-health-prod
+            type: apply-object
+            properties:
+              value:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: bucket-ready-prod
+                  namespace: prod
+                data:
+                  status: "checked"
+
+      # Deploy application to production
+      - name: deploy-app-prod
+        type: deploy
+        dependsOn: ["wait-bucket-prod"]
+        properties:
+          policies: ["topology-prod", "override-prod"]
+          auto: true
+
+      # Functional test: Health check in production
+      - name: health-check-prod
+        type: request
+        dependsOn: ["deploy-app-prod"]
+        timeout: "60s"
+        properties:
+          url: "http://storage-api.prod.svc.cluster.local:8080/health"
+          method: "GET"
