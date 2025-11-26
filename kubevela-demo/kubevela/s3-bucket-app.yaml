@@ -26,6 +26,10 @@ spec:
       properties:
         image: k3d-registry.localhost:5000/kv-product-cat-api:v1.0.0
         imagePullPolicy: IfNotPresent
+        annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "8080"
+          prometheus.io/path: "/metrics"
         ports:
           - port: 8080
             expose: true
