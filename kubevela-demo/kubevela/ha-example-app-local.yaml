@@ -1,0 +1,117 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: ha-demo-local
+  namespace: default
+  annotations:
+    description: "HA demo app optimized for local development (k3d/kind/minikube)"
+spec:
+  components:
+    - name: web-service
+      type: webservice
+      properties:
+        image: nginx:1.21
+        ports:
+          - port: 80
+            expose: true
+        cpu: "100m"
+        memory: "128Mi"
+      traits:
+        # High availability trait - dev level (default)
+        - type: high-availability
+          properties:
+            level: dev
+
+        # Resource limits
+        - type: resource
+          properties:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+  # Policies for different environments
+  policies:
+    # Dev environment
+    - name: topology-dev
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: dev
+
+    # Staging environment
+    - name: topology-staging
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: staging
+
+    # Production environment (local)
+    - name: topology-prod
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: prod
+
+    # Override HA settings for staging
+    - name: override-staging
+      type: override
+      properties:
+        components:
+          - name: web-service
+            traits:
+              - type: high-availability
+                properties:
+                  level: staging
+
+    # Override HA settings for production (LOCAL)
+    # Uses prod-local which provides prod-like HA without topology spread constraints
+    - name: override-prod
+      type: override
+      properties:
+        components:
+          - name: web-service
+            traits:
+              - type: high-availability
+                properties:
+                  level: prod-local  # Perfect for local k3d/kind/minikube!
+
+  # Workflow for progressive deployment
+  workflow:
+    steps:
+      # Deploy to dev
+      - name: deploy-dev
+        type: deploy
+        properties:
+          policies: ["topology-dev"]
+          auto: true
+
+      # Manual approval for staging
+      - name: approval-staging
+        type: suspend
+        dependsOn: ["deploy-dev"]
+
+      # Deploy to staging
+      - name: deploy-staging
+        type: deploy
+        dependsOn: ["approval-staging"]
+        properties:
+          policies: ["topology-staging", "override-staging"]
+          auto: true
+
+      # Manual approval for production
+      - name: approval-prod
+        type: suspend
+        dependsOn: ["deploy-staging"]
+        properties:
+          duration: "10s"
+
+      # Deploy to production (with prod-local HA)
+      - name: deploy-prod
+        type: deploy
+        dependsOn: ["approval-prod"]
+        properties:
+          policies: ["topology-prod", "override-prod"]
+          auto: true

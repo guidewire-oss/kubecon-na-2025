@@ -65,13 +65,13 @@ template: {
     parameter: {
         // +usage=Name of the DynamoDB table (will be prefixed with tenant-atlantis-)
         name: string
-        
+
         // +usage=AWS region default to us-west-2
         region: *"us-west-2" | string
-        
+
         // +usage=Hash key attribute name
         hashKey: string
-        
+
         // +usage=Attribute definitions
         attributes: [...{
             // +usage=Attribute name
