@@ -1,0 +1,116 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: ha-demo-app
+  namespace: default
+spec:
+  components:
+    - name: web-service
+      type: webservice
+      properties:
+        image: nginx:1.21
+        ports:
+          - port: 80
+            expose: true
+        cpu: "100m"
+        memory: "128Mi"
+      traits:
+        # High availability trait - dev level (default)
+        - type: high-availability
+          properties:
+            level: dev
+
+        # Resource limits
+        - type: resource
+          properties:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+  # Policies for different environments
+  policies:
+    # Dev environment
+    - name: topology-dev
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: dev
+
+    # Staging environment
+    - name: topology-staging
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: staging
+
+    # Production environment
+    - name: topology-prod
+      type: topology
+      properties:
+        clusters: ["local"]
+        namespace: prod
+
+    # Override HA settings for staging
+    - name: override-staging
+      type: override
+      properties:
+        components:
+          - name: web-service
+            traits:
+              - type: high-availability
+                properties:
+                  level: staging
+
+    # Override HA settings for production
+    # Note: Use 'prod-local' for local dev (k3d/kind/minikube)
+    #       Use 'prod' for real multi-zone clusters (EKS/GKE/AKS)
+    - name: override-prod
+      type: override
+      properties:
+        components:
+          - name: web-service
+            traits:
+              - type: high-availability
+                properties:
+                  level: prod-local  # Use 'prod' for multi-zone clusters
+
+  # Workflow for progressive deployment
+  workflow:
+    steps:
+      # Deploy to dev
+      - name: deploy-dev
+        type: deploy
+        properties:
+          policies: ["topology-dev"]
+          auto: true
+
+      # Manual approval for staging
+      - name: approval-staging
+        type: suspend
+        dependsOn: ["deploy-dev"]
+
+      # Deploy to staging
+      - name: deploy-staging
+        type: deploy
+        dependsOn: ["approval-staging"]
+        properties:
+          policies: ["topology-staging", "override-staging"]
+          auto: true
+
+      # Manual approval for production
+      - name: approval-prod
+        type: suspend
+        dependsOn: ["deploy-staging"]
+        properties:
+          duration: "1m"
+
+      # Deploy to production
+      - name: deploy-prod
+        type: deploy
+        dependsOn: ["approval-prod"]
+        properties:
+          policies: ["topology-prod", "override-prod"]
+          auto: true

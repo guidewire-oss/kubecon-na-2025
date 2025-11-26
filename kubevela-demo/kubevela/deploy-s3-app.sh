@@ -17,11 +17,11 @@ echo "=== Step 1: Building and pushing Docker image ==="
 echo ""
 
 # Check if Dockerfile exists
-if [ ! -f "../../component-contributor-demo/kv-product-cat-api/Dockerfile" ]; then
-    echo "⚠ Warning: Dockerfile not found at ../../component-contributor-demo/kv-product-cat-api/Dockerfile"
+if [ ! -f "../../kubevela-demo/app/Dockerfile" ]; then
+    echo "⚠ Warning: Dockerfile not found at ../../kubevela-demo/app/Dockerfile"
     echo "Skipping image build. Assuming image already exists..."
 else
-    cd ../../component-contributor-demo/kv-product-cat-api
+    cd ../../kubevela-demo/app
 
     echo "Building Docker image..."
     docker build -t kv-product-cat-api:v1.0.0 .
@@ -39,6 +39,7 @@ else
 
     cd ../../kubevela-demo/kubevela
 fi
+
 
 # Step 2: Apply Crossplane XRD and Composition
 echo "=== Step 2: Applying Crossplane S3 resources ==="

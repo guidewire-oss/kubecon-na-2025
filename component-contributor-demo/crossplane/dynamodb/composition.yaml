@@ -6,7 +6,7 @@ spec:
   compositeTypeRef:
     apiVersion: demo.kubecon.io/v1alpha1
     kind: XDynamoDBTable
-  
+
   mode: Pipeline
   pipeline:
     - step: create-table
@@ -23,38 +23,32 @@ spec:
               spec:
                 forProvider:
                   billingMode: PAY_PER_REQUEST
-            
+
             patches:
-              # Patch table name with tenant-atlantis prefix
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.name
                 toFieldPath: metadata.name
-              
-              # Patch region
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.region
                 toFieldPath: spec.forProvider.region
-              
-              # Patch hash key
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.hashKey
                 toFieldPath: spec.forProvider.hashKey
-              
-              # Patch attributes
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.attributes
                 toFieldPath: spec.forProvider.attribute
-              
-              # Patch tags
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.tags
                 toFieldPath: spec.forProvider.tags
-              
-              # Patch status back
+
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.tableArn
-              
+
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.tableId
