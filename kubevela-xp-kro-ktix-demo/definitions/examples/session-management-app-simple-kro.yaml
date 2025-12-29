@@ -1,33 +1,19 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: session-management-xp
+  name: session-management-simple
   namespace: default
 spec:
   components:
-    # DynamoDB table for storing sessions (Crossplane) with TTL and streams
-    - name: sessions-table-xp
-      type: aws-dynamodb-xp
+    # DynamoDB table for storing sessions (SimpleDynamoDB - basic)
+    - name: sessions-table-simple
+      type: aws-dynamodb-simple-kro
       properties:
-        tableName: tenant-atlantis-user-sessions-xp
+        tableName: user-sessions-simple
         region: us-west-2
-        attributeDefinitions:
-          - attributeName: sessionId
-            attributeType: "S"
-        keySchema:
-          - attributeName: sessionId
-            keyType: HASH
-        billingMode: PAY_PER_REQUEST
-      traits:
-        - type: dynamodb-ttl-xp
-          properties:
-            attributeName: expiresAt
-        - type: dynamodb-streams-xp
-          properties:
-            viewType: KEYS_ONLY
 
     # Session API application
-    - name: session-api-xp
+    - name: session-api-simple
       type: webservice
       properties:
         image: session-api:latest
@@ -37,7 +23,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "tenant-atlantis-user-sessions-xp"
+            value: "tenant-atlantis-user-sessions-simple"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS
@@ -48,9 +34,9 @@ spec:
             value: "/aws/credentials"
         volumeMounts:
           secret:
-            - name: aws-creds-xp
+            - name: aws-creds
               mountPath: /aws
-              secretName: aws-credentials-xp
+              secretName: ack-dynamodb-user-secrets
         livenessProbe:
           httpGet:
             path: /health
