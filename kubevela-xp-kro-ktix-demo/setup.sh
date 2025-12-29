@@ -12,10 +12,47 @@ set -e  # Exit on error
 #       - All YAML examples use quoted attribute types ("S", "N", "B")
 #       - Component definition supports trait-based billing mode overrides
 #       - API version corrected to dynamodb.aws.upbound.io/v1beta1
+#
+# USAGE:
+#   ./setup.sh              # Full installation
+#   ./setup.sh --skip-install  # Skip cluster/tool installation, only deploy definitions and apps
+#   ./setup.sh --help       # Show help
+
+# Parse command line arguments
+SKIP_INSTALL=false
+for arg in "$@"; do
+    case $arg in
+        --skip-install)
+            SKIP_INSTALL=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: ./setup.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --skip-install    Skip cluster and tool installation (k3d, KubeVela, Crossplane, KRO, ACK)"
+            echo "                    Only redeploy component definitions and applications"
+            echo "  --help, -h        Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  ./setup.sh                # Full installation"
+            echo "  ./setup.sh --skip-install # Quick redeploy of definitions and apps"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║   KubeCon NA 2025 - DynamoDB: Crossplane vs KRO Demo          ║"
 echo "║   KubeVela + Crossplane + KRO + ACK                           ║"
+if [ "$SKIP_INSTALL" = true ]; then
+echo "║   MODE: Skip Install (definitions and apps only)              ║"
+fi
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -62,103 +99,102 @@ DEMO_ROOT=$(pwd)
 # =============================================================================
 # PHASE 0: Prerequisites Check
 # =============================================================================
-print_step "Phase 0: Checking Prerequisites"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 0: Checking Prerequisites"
 
-echo "Checking required tools..."
-all_tools_ok=true
+    echo "Checking required tools..."
+    all_tools_ok=true
 
-required_tools="k3d kubectl helm vela"
-for tool in $required_tools; do
-    if command -v $tool &>/dev/null; then
-        version=$($tool version 2>/dev/null | head -1 || echo "installed")
-        print_success "$tool is installed"
-    else
-        print_error "$tool is NOT installed"
-        all_tools_ok=false
+    required_tools="k3d kubectl helm vela"
+    for tool in $required_tools; do
+        if command -v $tool &>/dev/null; then
+            version=$($tool version 2>/dev/null | head -1 || echo "installed")
+            print_success "$tool is installed"
+        else
+            print_error "$tool is NOT installed"
+            all_tools_ok=false
+        fi
+    done
+
+    if [ "$all_tools_ok" = false ]; then
+        print_error "Some required tools are missing. Please install them first:"
+        echo ""
+        echo "  # macOS"
+        echo "  brew install k3d kubectl helm"
+        echo "  curl -fsSl https://kubevela.io/script/install.sh | bash"
+        echo ""
+        echo "  # Linux"
+        echo "  # Install k3d: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
+        echo "  # Install kubectl: https://kubernetes.io/docs/tasks/tools/"
+        echo "  # Install helm: https://helm.sh/docs/intro/install/"
+        echo "  # Install vela: curl -fsSl https://kubevela.io/script/install.sh | bash"
+        echo ""
+        exit 1
     fi
-done
 
-if [ "$all_tools_ok" = false ]; then
-    print_error "Some required tools are missing. Please install them first:"
-    echo ""
-    echo "  # macOS"
-    echo "  brew install k3d kubectl helm"
-    echo "  curl -fsSl https://kubevela.io/script/install.sh | bash"
-    echo ""
-    echo "  # Linux"
-    echo "  # Install k3d: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
-    echo "  # Install kubectl: https://kubernetes.io/docs/tasks/tools/"
-    echo "  # Install helm: https://helm.sh/docs/intro/install/"
-    echo "  # Install vela: curl -fsSl https://kubevela.io/script/install.sh | bash"
-    echo ""
-    exit 1
+    print_success "All required tools are installed"
 fi
-
-print_success "All required tools are installed"
 
 # =============================================================================
 # PHASE 1: Cluster Setup
 # =============================================================================
-print_step "Phase 1: Creating Kubernetes Cluster"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 1: Creating Kubernetes Cluster"
 
-# Check if cluster already exists
-if k3d cluster list | grep -q "kubevela-demo"; then
-    print_warning "Cluster 'kubevela-demo' already exists"
-    read -p "Do you want to delete and recreate it? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_warning "Deleting existing cluster..."
-        k3d cluster delete kubevela-demo
-    else
-        print_info "Using existing cluster"
+    # Check if cluster already exists - no interactive prompts
+    if k3d cluster list | grep -q "kubevela-demo"; then
+        print_info "Cluster 'kubevela-demo' already exists, using it"
     fi
-fi
 
-if ! k3d cluster list | grep -q "kubevela-demo"; then
-    echo "Creating k3d cluster 'kubevela-demo' with 1 server and 2 agents..."
-    k3d cluster create kubevela-demo \
-        --servers 1 \
-        --agents 2 \
-        --wait \
-        --timeout 5m
-    print_success "Cluster created successfully"
-else
-    print_success "Cluster is ready"
-fi
+    if ! k3d cluster list | grep -q "kubevela-demo"; then
+        echo "Creating k3d cluster 'kubevela-demo' with 1 server and 2 agents..."
+        k3d cluster create kubevela-demo \
+            --servers 1 \
+            --agents 2 \
+            --wait \
+            --timeout 5m
+        print_success "Cluster created successfully"
+    else
+        print_success "Cluster is ready"
+    fi
 
-# Wait for cluster to be ready
-echo "Waiting for all nodes to be ready..."
-kubectl wait --for=condition=Ready nodes --all --timeout=300s
-print_success "All cluster nodes are ready"
+    # Wait for cluster to be ready
+    echo "Waiting for all nodes to be ready..."
+    kubectl wait --for=condition=Ready nodes --all --timeout=300s
+    print_success "All cluster nodes are ready"
+fi
 
 # =============================================================================
 # PHASE 2: Install KubeVela
 # =============================================================================
-print_step "Phase 2: Installing KubeVela"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 2: Installing KubeVela"
 
-echo "Installing KubeVela using vela CLI..."
-vela install
+    echo "Installing KubeVela using vela CLI..."
+    vela install
 
-# Wait for KubeVela to be ready
-echo ""
-echo "Waiting for KubeVela controller..."
-if kubectl wait --namespace vela-system \
-    --for=condition=ready pod \
-    --selector=app.kubernetes.io/name=vela-core \
-    --timeout=600s; then
-    print_success "KubeVela controller is ready"
-else
-    print_error "KubeVela controller failed to become ready"
-    exit 1
+    # Wait for KubeVela to be ready
+    echo ""
+    echo "Waiting for KubeVela controller..."
+    if kubectl wait --namespace vela-system \
+        --for=condition=ready pod \
+        --selector=app.kubernetes.io/name=vela-core \
+        --timeout=600s; then
+        print_success "KubeVela controller is ready"
+    else
+        print_error "KubeVela controller failed to become ready"
+        exit 1
+    fi
+
+    print_success "KubeVela is installed and ready"
+    kubectl get pods -n vela-system
 fi
-
-print_success "KubeVela is installed and ready"
-kubectl get pods -n vela-system
 
 # =============================================================================
 # PHASE 3: Install Crossplane
 # =============================================================================
-print_step "Phase 3: Installing Crossplane"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 3: Installing Crossplane"
 
 echo "Adding Crossplane Helm repository..."
 helm repo add crossplane-stable https://charts.crossplane.io/stable --force-update
@@ -276,12 +312,14 @@ for i in $(seq 1 $MAX_RETRIES); do
     sleep 5
 done
 
-print_success "Crossplane AWS DynamoDB Provider installed and ready"
+    print_success "Crossplane AWS DynamoDB Provider installed and ready"
+fi
 
 # =============================================================================
 # PHASE 4: Install KRO (Kube Resource Orchestrator)
 # =============================================================================
-print_step "Phase 4: Installing KRO (Kube Resource Orchestrator)"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 4: Installing KRO (Kube Resource Orchestrator)"
 
 echo "Creating kro-system namespace..."
 kubectl create namespace kro-system --dry-run=client -o yaml | kubectl apply -f -
@@ -291,15 +329,17 @@ kubectl apply -f https://github.com/kubernetes-sigs/kro/releases/latest/download
 
 echo "Waiting for KRO controller to be ready..."
 sleep 10
-kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s || {
-    print_warning "KRO controller may still be starting, continuing..."
-}
-print_success "KRO controller is installed"
+    kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s || {
+        print_warning "KRO controller may still be starting, continuing..."
+    }
+    print_success "KRO controller is installed"
+fi
 
 # =============================================================================
 # PHASE 5: Install ACK DynamoDB Controller
 # =============================================================================
-print_step "Phase 5: Installing ACK DynamoDB Controller"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 5: Installing ACK DynamoDB Controller"
 
 echo "Installing ACK DynamoDB controller from OCI registry..."
 echo "Note: ACK now uses OCI registries hosted on AWS ECR Public"
@@ -390,15 +430,17 @@ else
 fi
 
 echo "Waiting for ACK DynamoDB controller..."
-kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=dynamodb-chart -n ack-system --timeout=300s || {
-    print_warning "ACK controller may still be starting, continuing..."
-}
-print_success "ACK DynamoDB controller is installed"
+    kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=dynamodb-chart -n ack-system --timeout=300s || {
+        print_warning "ACK controller may still be starting, continuing..."
+    }
+    print_success "ACK DynamoDB controller is installed"
+fi
 
 # =============================================================================
 # PHASE 5.5: Configure KRO RBAC and Deploy ResourceGraphDefinitions
 # =============================================================================
-print_step "Phase 5.5: Configuring KRO RBAC and Deploying ResourceGraphDefinitions"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 5.5: Configuring KRO RBAC and Deploying ResourceGraphDefinitions"
 
 echo "Applying KRO RBAC fix for dynamic resource management..."
 if [ -f "$DEMO_ROOT/kro-rbac-fix.yaml" ]; then
@@ -431,16 +473,18 @@ echo ""
 echo "Waiting for RGDs to be ready..."
 sleep 5
 
-# Restart KRO controller to pick up new RBAC permissions
-echo "Restarting KRO controller to apply RBAC changes..."
-kubectl rollout restart deployment/kro -n kro-system
-kubectl rollout status deployment/kro -n kro-system --timeout=120s
-print_success "KRO controller restarted with new permissions"
+    # Restart KRO controller to pick up new RBAC permissions
+    echo "Restarting KRO controller to apply RBAC changes..."
+    kubectl rollout restart deployment/kro -n kro-system
+    kubectl rollout status deployment/kro -n kro-system --timeout=120s
+    print_success "KRO controller restarted with new permissions"
+fi
 
 # =============================================================================
 # PHASE 5.6: Copy AWS Credentials to Default Namespace
 # =============================================================================
-print_step "Phase 5.6: Copying AWS Credentials to Default Namespace"
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 5.6: Copying AWS Credentials to Default Namespace"
 
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
     echo "Copying ACK credentials to default namespace for KRO-based applications..."
@@ -458,6 +502,7 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
     print_success "Crossplane credentials available in default namespace"
 else
     print_warning "AWS credentials not configured, skipping credential copy"
+fi
 fi
 
 # =============================================================================

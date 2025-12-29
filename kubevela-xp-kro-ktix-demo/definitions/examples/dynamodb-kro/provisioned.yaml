@@ -9,7 +9,7 @@ spec:
       type: aws-dynamodb-kro
       properties:
         tableName: orders-table
-        region: us-east-1
+        region: us-west-2
         billingMode: PROVISIONED
 
         # Define attributes

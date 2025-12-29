@@ -8,8 +8,8 @@ spec:
     - name: orders-table
       type: aws-dynamodb-kro
       properties:
-        tableName: orders-prod
-        region: us-east-1
+        tableName: tenant-atlantis-orders-prod
+        region: us-west-2
 
         # Table schema
         attributeDefinitions:
