@@ -97,7 +97,13 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_DEFAULT_REGION=us-west-2
 ```
 
-**Note**: The IAM user must have permissions to create DynamoDB tables. For the session management app, table names must start with `tenant-atlantis-` (or adjust the table name prefix in the app YAMLs).
+**Important**: The IAM user must have specific DynamoDB permissions. See **[IAM_POLICY.md](IAM_POLICY.md)** for the complete minimal IAM policy required.
+
+**Key Requirements**:
+- Table names must start with `tenant-atlantis-` prefix
+- Permissions scoped to `us-west-2` region
+- Includes: CreateTable, DescribeTable, UpdateTable, DeleteTable, and feature-specific actions
+- See [IAM_POLICY.md](IAM_POLICY.md) for full policy and setup instructions
 
 ## Architecture
 
