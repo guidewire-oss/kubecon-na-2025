@@ -8,29 +8,49 @@
             }
         }
         status: {
-            details: #"""
-                // Public fields - exported to Application status
-                tableArn: *context.output.status.atProvider.tableArn | ""
-                tableStatus: *context.output.status.atProvider.tableStatus | "CREATING"
-                itemCount: *context.output.status.atProvider.itemCount | 0
-                tableSizeBytes: *context.output.status.atProvider.tableSizeBytes | 0
-
-                // Local fields - for health check logic
-                $statusConditions: *context.output.status.conditions | []
-                """#
-
             healthPolicy: #"""
-                isHealth: len(context.status.details.$statusConditions) > 0 &&
-                          context.status.details.$statusConditions[0].status == "True" &&
-                          context.status.details.tableStatus == "ACTIVE"
+                isHealth: *false | bool
+                if context.output.status.conditions != _|_ {
+                    // Check if Ready condition exists and is True
+                    if len(context.output.status.conditions) > 0 {
+                        for i, cond in context.output.status.conditions {
+                            if cond.type == "Ready" && cond.status == "True" {
+                                isHealth: true
+                            }
+                        }
+                    }
+                }
                 """#
 
             customStatus: #"""
+                ready: *"Unknown" | string
+                synced: *"Unknown" | string
+                tableArn: *"" | string
+                tableName: *"" | string
+
+                if context.output.status.atProvider.arn != _|_ {
+                    tableArn: context.output.status.atProvider.arn
+                }
+                if context.output.status.atProvider.id != _|_ {
+                    tableName: context.output.status.atProvider.id
+                }
+
+                if context.output.status.conditions != _|_ {
+                    for i, cond in context.output.status.conditions {
+                        if cond.type == "Ready" {
+                            ready: cond.status
+                        }
+                        if cond.type == "Synced" {
+                            synced: cond.status
+                        }
+                    }
+                }
+
                 if context.status.healthy {
-                    message: "Table ACTIVE: \(context.status.details.itemCount) items, \(context.status.details.tableSizeBytes) bytes, ARN: \(context.status.details.tableArn)"
+                    message: "Table ACTIVE - ARN: \(tableArn)"
                 }
                 if !context.status.healthy {
-                    message: "Table status: \(context.status.details.tableStatus) - waiting for ACTIVE state"
+                    message: "Table provisioning - Ready: \(ready), Synced: \(synced)"
                 }
                 """#
         }
@@ -51,8 +71,20 @@ template: {
             forProvider: {
                 region: parameter.region
 
-                attributeDefinitions: parameter.attributeDefinitions
-                keySchema: parameter.keySchema
+                // Convert AWS API format to Terraform/Upbound format
+                // attributeDefinitions -> attribute (with name/type instead of attributeName/attributeType)
+                attribute: [
+                    for attr in parameter.attributeDefinitions {
+                        name: attr.attributeName
+                        type: attr.attributeType
+                    }
+                ]
+
+                // keySchema -> hashKey/rangeKey
+                hashKey: parameter.keySchema[0].attributeName
+                if len(parameter.keySchema) > 1 {
+                    rangeKey: parameter.keySchema[1].attributeName
+                }
 
                 // Default to PAY_PER_REQUEST, but allow override from parameter or trait
                 billingMode: *"PAY_PER_REQUEST" | string
