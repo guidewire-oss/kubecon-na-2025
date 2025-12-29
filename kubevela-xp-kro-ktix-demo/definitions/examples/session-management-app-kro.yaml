@@ -5,12 +5,25 @@ metadata:
   namespace: default
 spec:
   components:
-    # DynamoDB table for storing sessions
+    # DynamoDB table for storing sessions with TTL and streams
     - name: sessions-table
-      type: aws-dynamodb-simple-kro
+      type: aws-dynamodb-kro
       properties:
-        tableName: user-sessions
+        tableName: tenant-atlantis-user-sessions
         region: us-west-2
+        attributeDefinitions:
+          - attributeName: sessionId
+            attributeType: "S"
+        keySchema:
+          - attributeName: sessionId
+            keyType: HASH
+      traits:
+        - type: dynamodb-ttl-kro
+          properties:
+            attributeName: expiresAt
+        - type: dynamodb-streams-kro
+          properties:
+            viewType: KEYS_ONLY
 
     # Session API application
     - name: session-api

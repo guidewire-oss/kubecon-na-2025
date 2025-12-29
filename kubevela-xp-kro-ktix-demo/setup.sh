@@ -713,18 +713,26 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
             echo ""
             echo "Deploying session management applications..."
 
-            # Deploy KRO-based version
-            if [ -f "$DEMO_ROOT/definitions/examples/session-management-app.yaml" ]; then
-                kubectl apply -f "$DEMO_ROOT/definitions/examples/session-management-app.yaml"
-                print_success "deployed: session-management (Flask API + KRO DynamoDB)"
+            # Deploy KRO-based version (advanced with traits)
+            if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-kro.yaml" ]; then
+                vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-kro.yaml"
+                print_success "deployed: session-management (Flask API + KRO DynamoDB with traits)"
             else
-                print_warning "session-management-app.yaml not found, skipping KRO version"
+                print_warning "session-management-app-kro.yaml not found, skipping KRO version"
+            fi
+
+            # Deploy SimpleDynamoDB version (basic KRO)
+            if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-simple-kro.yaml" ]; then
+                vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-simple-kro.yaml"
+                print_success "deployed: session-management-simple (Flask API + SimpleDynamoDB)"
+            else
+                print_warning "session-management-app-simple-kro.yaml not found, skipping Simple KRO version"
             fi
 
             # Deploy Crossplane-based version
             if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-xp.yaml" ]; then
-                kubectl apply -f "$DEMO_ROOT/definitions/examples/session-management-app-xp.yaml"
-                print_success "deployed: session-management-xp (Flask API + Crossplane DynamoDB)"
+                vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-xp.yaml"
+                print_success "deployed: session-management-xp (Flask API + Crossplane DynamoDB with traits)"
             else
                 print_warning "session-management-app-xp.yaml not found, skipping Crossplane version"
             fi
