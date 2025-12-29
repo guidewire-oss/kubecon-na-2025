@@ -233,10 +233,17 @@ spec:
 ## Verification Commands
 
 ```bash
-# Check applications
-kubectl get applications.core.oam.dev
+# Check all applications (recommended - shows all apps)
+vela ls -A
+
+# Check specific application status
 vela status dynamodb-basic-xp
-vela status dynamodb-basic-example
+vela status session-management
+vela status session-management-simple
+vela status session-management-xp
+
+# Check via kubectl
+kubectl get applications.core.oam.dev -A
 
 # Check Crossplane resources
 kubectl get table.dynamodb.aws.upbound.io -A
@@ -358,6 +365,15 @@ kubectl rollout restart deployment/kro -n kro-system
 - Edit the application YAML files
 - Update `DYNAMODB_TABLE_NAME` environment variable
 - Or adjust your IAM policy to allow the desired table names
+
+### Issue: Applications not showing in VelaUX UI
+
+**VelaUX may not show all applications immediately:**
+- VelaUX was designed to show applications created through its API/UI
+- Applications created with `vela up` or `kubectl apply` exist in Kubernetes
+- Use `vela ls -A` to see ALL applications regardless of VelaUX
+- VelaUX caching or project filtering may hide some applications
+- All applications are fully functional even if not visible in VelaUX UI
 
 ## Documentation
 
