@@ -1,0 +1,82 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: dynamodbtable
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DynamoDBTable
+    spec:
+      tableName: string
+      region: string
+      billingMode: "string | default=\"PAY_PER_REQUEST\""
+
+      # Throughput (only for PROVISIONED mode)
+      provisionedThroughput:
+        readCapacityUnits: integer
+        writeCapacityUnits: integer
+
+      # Schema definition
+      attributeDefinitions: object
+      keySchema: object
+
+      # Secondary indexes
+      globalSecondaryIndexes: object
+      localSecondaryIndexes: object
+
+      # Features
+      streamEnabled: "boolean | default=false"
+      streamViewType: string
+      pointInTimeRecoveryEnabled: "boolean | default=false"
+      sseEnabled: "boolean | default=false"
+      sseType: string
+      kmsMasterKeyID: string
+      ttlEnabled: "boolean | default=false"
+      ttlAttributeName: string
+      deletionProtectionEnabled: "boolean | default=false"
+      tableClass: string
+
+      # Tags - simplified to avoid schema issues
+      tags: object
+    status:
+      tableArn: ${table.status.ackResourceMetadata.arn}
+      tableStatus: ${table.status.tableStatus}
+      tableID: ${table.status.tableID}
+      latestStreamArn: ${table.status.latestStreamARN}
+      itemCount: ${table.status.itemCount}
+      tableSizeBytes: ${table.status.tableSizeBytes}
+      creationDateTime: ${table.status.creationDateTime}
+      conditions: ${table.status.conditions}
+
+  resources:
+    - id: table
+      template:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: ${schema.spec.tableName}
+          annotations:
+            kro.run/region: ${schema.spec.region}
+        spec:
+          tableName: ${schema.spec.tableName}
+          billingMode: ${schema.spec.billingMode}
+          attributeDefinitions: ${schema.spec.attributeDefinitions}
+          keySchema: ${schema.spec.keySchema}
+
+          streamSpecification:
+            streamEnabled: ${schema.spec.streamEnabled}
+            streamViewType: ${schema.spec.streamViewType}
+
+          continuousBackups:
+            pointInTimeRecoveryEnabled: ${schema.spec.pointInTimeRecoveryEnabled}
+
+          sseSpecification:
+            enabled: ${schema.spec.sseEnabled}
+            sseType: ${schema.spec.sseType}
+            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
+
+          timeToLive:
+            enabled: ${schema.spec.ttlEnabled}
+            attributeName: ${schema.spec.ttlAttributeName}
+
+          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}

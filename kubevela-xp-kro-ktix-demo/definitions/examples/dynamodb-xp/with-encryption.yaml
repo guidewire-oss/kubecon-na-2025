@@ -1,0 +1,31 @@
+# DynamoDB table with custom KMS encryption for compliance
+# Use this for HIPAA, PCI-DSS, or other compliance requirements
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: encrypted-table
+  namespace: default
+spec:
+  components:
+    - name: sensitive-data-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-east-1
+        attributeDefinitions:
+          - attributeName: recordId
+            attributeType: "S"
+        keySchema:
+          - attributeName: recordId
+            keyType: HASH
+        tags:
+          - key: DataClassification
+            value: Sensitive
+          - key: Compliance
+            value: HIPAA
+      traits:
+        - type: dynamodb-encryption-xp
+          properties:
+            enabled: true
+            # Replace with your KMS key alias or ARN
+            kmsKeyId: alias/dynamodb-prod
+            sseType: KMS

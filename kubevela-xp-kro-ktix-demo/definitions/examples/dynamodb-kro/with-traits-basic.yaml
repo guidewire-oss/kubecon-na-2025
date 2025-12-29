@@ -1,0 +1,37 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-traits-basic
+  namespace: default
+spec:
+  components:
+    - name: session-table
+      type: aws-dynamodb-kro
+      properties:
+        tableName: user-sessions
+        region: us-east-1
+
+        # Basic schema
+        attributeDefinitions:
+          - attributeName: sessionId
+            attributeType: "S"
+        keySchema:
+          - attributeName: sessionId
+            keyType: HASH
+
+      # Apply traits for additional features
+      traits:
+        # Auto-expire sessions after time limit
+        - type: dynamodb-ttl-kro
+          properties:
+            attributeName: expiresAt
+
+        # Track session creation/deletion
+        - type: dynamodb-streams-kro
+          properties:
+            viewType: KEYS_ONLY
+
+        # Encrypt session data
+        - type: dynamodb-encryption-kro
+          properties:
+            sseType: AES256
