@@ -1,0 +1,19 @@
+# Basic DynamoDB table with minimal configuration
+# Simple key-value store with partition key only
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: basic-dynamodb-table
+  namespace: default
+spec:
+  components:
+    - name: sessions-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-east-1
+        attributeDefinitions:
+          - attributeName: sessionId
+            attributeType: "S"
+        keySchema:
+          - attributeName: sessionId
+            keyType: HASH

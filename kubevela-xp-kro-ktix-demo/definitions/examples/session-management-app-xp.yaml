@@ -1,0 +1,72 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: session-management-xp
+  namespace: default
+spec:
+  components:
+    # DynamoDB table for storing sessions (Crossplane)
+    - name: sessions-table-xp
+      type: aws-dynamodb-xp
+      properties:
+        tableName: user-sessions-xp
+        region: us-west-2
+        attributeDefinitions:
+          - attributeName: id
+            attributeType: "S"
+        keySchema:
+          - attributeName: id
+            keyType: HASH
+        billingMode: PAY_PER_REQUEST
+
+    # Session API application
+    - name: session-api-xp
+      type: webservice
+      properties:
+        image: session-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: DYNAMODB_TABLE_NAME
+            value: "tenant-atlantis-user-sessions-xp"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: SESSION_TTL_HOURS
+            value: "24"
+          - name: PORT
+            value: "8080"
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: "/aws/credentials"
+        volumeMounts:
+          secret:
+            - name: aws-creds-xp
+              mountPath: /aws
+              secretName: aws-credentials-xp
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      traits:
+        - type: scaler
+          properties:
+            replicas: 2
+        - type: resource
+          properties:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

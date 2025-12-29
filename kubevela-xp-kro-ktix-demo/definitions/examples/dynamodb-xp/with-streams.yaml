@@ -1,0 +1,32 @@
+# DynamoDB table with Streams for change data capture
+# Use for event-driven architectures, Lambda triggers, and real-time analytics
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: stream-enabled-table
+  namespace: default
+spec:
+  components:
+    - name: orders-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-west-2
+        attributeDefinitions:
+          - attributeName: orderId
+            attributeType: "S"
+          - attributeName: orderDate
+            attributeType: "N"
+        keySchema:
+          - attributeName: orderId
+            keyType: HASH
+          - attributeName: orderDate
+            keyType: RANGE
+      traits:
+        - type: dynamodb-streams-xp
+          properties:
+            enabled: true
+            # NEW_AND_OLD_IMAGES: Full change tracking
+            # NEW_IMAGE: Only new state
+            # OLD_IMAGE: Only old state
+            # KEYS_ONLY: Minimal data
+            viewType: NEW_AND_OLD_IMAGES
