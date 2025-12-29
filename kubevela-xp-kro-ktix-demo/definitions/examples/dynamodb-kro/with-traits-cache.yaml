@@ -9,7 +9,7 @@ spec:
       type: aws-dynamodb-kro
       properties:
         tableName: api-response-cache
-        region: us-east-1
+        region: us-west-2
 
         # Cache key structure
         attributeDefinitions:

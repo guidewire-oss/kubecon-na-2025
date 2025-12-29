@@ -9,7 +9,7 @@
 			healthPolicy: #"""
 				isHealth: *false | bool
 				if context.output.status.state != _|_ {
-					if context.output.status.state == "Ready" {
+					if context.output.status.state == "ACTIVE" {
 						isHealth: true
 					}
 				}
@@ -19,7 +19,7 @@
 					readyReplicas: *0 | int
 				} & {
 					if context.output.status.state != _|_ {
-						if context.output.status.state == "Ready" {
+						if context.output.status.state == "ACTIVE" {
 							readyReplicas: 1
 						}
 					}
@@ -70,26 +70,14 @@ template: {
 				localSecondaryIndexes: parameter.localSecondaryIndexes
 			}
 
-			// Stream configuration (default false, traits can override)
-			streamEnabled: false
-			if parameter.streamEnabled != _|_ {
-				streamEnabled: parameter.streamEnabled
-			}
-			if parameter.streamViewType != _|_ {
-				streamViewType: parameter.streamViewType
-			}
+			// Stream configuration (traits can set this, default in RGD schema)
+			// Don't set a value here to avoid conflicts with trait patches
 
-			// Point-in-time recovery (default false, traits can override)
-			pointInTimeRecoveryEnabled: *false | bool
-			if parameter.pointInTimeRecoveryEnabled != _|_ {
-				pointInTimeRecoveryEnabled: parameter.pointInTimeRecoveryEnabled
-			}
+			// Point-in-time recovery (traits can set this, default in RGD schema)
+			// Don't set a value here to avoid conflicts with trait patches
 
-			// Server-side encryption (default false, traits can override)
-			sseEnabled: *false | bool
-			if parameter.sseEnabled != _|_ {
-				sseEnabled: parameter.sseEnabled
-			}
+			// Server-side encryption (traits can set this, default in RGD schema)
+			// Don't set a value here to avoid conflicts with trait patches
 			if parameter.sseType != _|_ {
 				sseType: parameter.sseType
 			}
@@ -97,20 +85,14 @@ template: {
 				kmsMasterKeyID: parameter.kmsMasterKeyID
 			}
 
-			// Time to live (default false, traits can override)
-			ttlEnabled: *false | bool
-			if parameter.ttlEnabled != _|_ {
-				ttlEnabled: parameter.ttlEnabled
-			}
+			// Time to live (traits can set this, default in RGD schema)
+			// Don't set a value here to avoid conflicts with trait patches
 			if parameter.ttlAttributeName != _|_ {
 				ttlAttributeName: parameter.ttlAttributeName
 			}
 
-			// Deletion protection (default false, traits can override)
-			deletionProtectionEnabled: *false | bool
-			if parameter.deletionProtectionEnabled != _|_ {
-				deletionProtectionEnabled: parameter.deletionProtectionEnabled
-			}
+			// Deletion protection (traits can set this, default in RGD schema)
+			// Don't set a value here to avoid conflicts with trait patches
 
 			// Table class
 			if parameter.tableClass != _|_ {
@@ -134,184 +116,10 @@ template: {
 		}
 	}
 
-	outputs: {
-		// ResourceGraphDefinition that orchestrates the ACK DynamoDB Table
-		"dynamodb-rgd": {
-			apiVersion: "kro.run/v1alpha1"
-			kind:       "ResourceGraphDefinition"
-			metadata: {
-				name: "dynamodbtable"
-			}
-			spec: {
-				schema: {
-					apiVersion: "v1alpha1"
-					kind:       "DynamoDBTable"
-					spec: {
-						tableName:  "string"
-						region:     "string"
-						billingMode: "string | default=\"PAY_PER_REQUEST\""
-
-						// Throughput (only for PROVISIONED mode)
-						provisionedThroughput: {
-							readCapacityUnits:  "integer"
-							writeCapacityUnits: "integer"
-						}
-
-						// Schema definition
-						attributeDefinitions: [{
-							attributeName: "string"
-							attributeType: "string"
-						}]
-						keySchema: [{
-							attributeName: "string"
-							keyType:       "string"
-						}]
-
-						// Secondary indexes
-						globalSecondaryIndexes: [{
-							indexName: "string"
-							keySchema: [{
-								attributeName: "string"
-								keyType:       "string"
-							}]
-							projection: {
-								projectionType:   "string"
-								nonKeyAttributes: ["string"]
-							}
-							provisionedThroughput: {
-								readCapacityUnits:  "integer"
-								writeCapacityUnits: "integer"
-							}
-						}]
-						localSecondaryIndexes: [{
-							indexName: "string"
-							keySchema: [{
-								attributeName: "string"
-								keyType:       "string"
-							}]
-							projection: {
-								projectionType:   "string"
-								nonKeyAttributes: ["string"]
-							}
-						}]
-
-						// Features
-						streamEnabled:               "boolean | default=false"
-						streamViewType:              "string"
-						pointInTimeRecoveryEnabled:  "boolean | default=false"
-						sseEnabled:                  "boolean | default=false"
-						sseType:                     "string"
-						kmsMasterKeyID:              "string"
-						ttlEnabled:                  "boolean | default=false"
-						ttlAttributeName:            "string"
-						deletionProtectionEnabled:   "boolean | default=false"
-						tableClass:                  "string"
-
-						// Tags
-						tags: [{
-							key:   "string"
-							value: "string"
-						}]
-
-						// Provider and connection
-						providerConfigRef: {
-							name: "string"
-						}
-						writeConnectionSecretToRef: {
-							name:      "string"
-							namespace: "string"
-						}
-					}
-					status: {
-						tableArn:          "${table.status.ackResourceMetadata.arn}"
-						tableStatus:       "${table.status.tableStatus}"
-						tableID:           "${table.status.tableID}"
-						latestStreamArn:   "${table.status.latestStreamARN}"
-						itemCount:         "${table.status.itemCount}"
-						tableSizeBytes:    "${table.status.tableSizeBytes}"
-						creationDateTime:  "${table.status.creationDateTime}"
-						conditions:        "${table.status.conditions}"
-					}
-				}
-
-				resources: [
-					{
-						id: "table"
-						template: {
-							apiVersion: "dynamodb.services.k8s.aws/v1alpha1"
-							kind:       "Table"
-							metadata: {
-								name: "${schema.spec.tableName}"
-								annotations: {
-									"kro.run/region": "${schema.spec.region}"
-								}
-							}
-							spec: {
-								tableName:  "${schema.spec.tableName}"
-								billingMode: "${schema.spec.billingMode}"
-
-								attributeDefinitions: "${schema.spec.attributeDefinitions}"
-								keySchema:            "${schema.spec.keySchema}"
-
-								// Conditional fields using includeWhen
-								provisionedThroughput: {
-									includeWhen: ["${schema.spec.billingMode == \"PROVISIONED\"}"]
-									readCapacityUnits:  "${schema.spec.provisionedThroughput.readCapacityUnits}"
-									writeCapacityUnits: "${schema.spec.provisionedThroughput.writeCapacityUnits}"
-								}
-
-								globalSecondaryIndexes: {
-									includeWhen: ["${size(schema.spec.globalSecondaryIndexes) > 0}"]
-									value:       "${schema.spec.globalSecondaryIndexes}"
-								}
-
-								localSecondaryIndexes: {
-									includeWhen: ["${size(schema.spec.localSecondaryIndexes) > 0}"]
-									value:       "${schema.spec.localSecondaryIndexes}"
-								}
-
-								streamSpecification: {
-									includeWhen: ["${schema.spec.streamEnabled}"]
-									streamEnabled:  true
-									streamViewType: "${schema.spec.streamViewType}"
-								}
-
-								pointInTimeRecoverySpecification: {
-									includeWhen: ["${schema.spec.pointInTimeRecoveryEnabled}"]
-									pointInTimeRecoveryEnabled: true
-								}
-
-								sseSpecification: {
-									includeWhen: ["${schema.spec.sseEnabled}"]
-									enabled:       true
-									sseType:       "${schema.spec.sseType}"
-									kmsMasterKeyID: "${schema.spec.kmsMasterKeyID}"
-								}
-
-								timeToLiveSpecification: {
-									includeWhen: ["${schema.spec.ttlEnabled}"]
-									enabled:       true
-									attributeName: "${schema.spec.ttlAttributeName}"
-								}
-
-								deletionProtectionEnabled: "${schema.spec.deletionProtectionEnabled}"
-
-								tableClass: {
-									includeWhen: ["${schema.spec.tableClass != \"\"}"]
-									value:       "${schema.spec.tableClass}"
-								}
-
-								tags: {
-									includeWhen: ["${size(schema.spec.tags) > 0}"]
-									value:       "${schema.spec.tags}"
-								}
-							}
-						}
-					},
-				]
-			}
-		}
-	}
+	// NOTE: The ResourceGraphDefinition (RGD) should be deployed separately,
+	// not as part of the component outputs. The RGD is deployed once globally
+	// via definitions/kro/dynamodb-rgd.yaml, and this component just creates
+	// instances of the DynamoDBTable CRD that the RGD defines.
 
 	parameter: {
 		// Required fields

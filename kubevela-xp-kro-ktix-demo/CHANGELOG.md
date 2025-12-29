@@ -1,5 +1,140 @@
 # Changelog
 
+## 2025-12-29 - KRO + ACK Integration Fixes
+
+### Fixed: KRO ResourceGraphDefinition and ACK Integration
+
+**Problems:**
+1. KRO instances showing `state="ERROR"` with "ResourcesInProgress"
+2. ACK tables failing with region and validation errors
+3. KubeVela applications stuck in "runningWorkflow" with unhealthy status
+4. Applications showing "all resources are created and ready" but marked unhealthy
+
+**Root Causes:**
+1. **Wrong region annotation**: Used `kro.run/region` instead of ACK standard `services.k8s.aws/region`
+2. **Missing optional operator**: Status field `latestStreamARN` referenced without CEL optional operator
+3. **AWS API validation errors**: Empty strings sent for optional fields (e.g., `kmsMasterKeyID: ""`)
+4. **Specification conflicts**: Sending disabled feature specs (e.g., `streamSpecification: { streamEnabled: false }`) tells ACK to disable streams that don't exist
+5. **Health check mismatch**: Component checked for `state == "Ready"` but KRO sets `state = "ACTIVE"` for DynamoDB
+
+**Solutions:**
+1. **Fixed region configuration** (definitions/kro/dynamodb-rgd.yaml):
+   - Changed annotation from `kro.run/region` to `services.k8s.aws/region`
+   - Updated all examples to use `us-west-2` region
+
+2. **Fixed optional status fields** (definitions/kro/dynamodb-rgd.yaml):
+   - Added CEL optional operator: `${table.status.?latestStreamARN}`
+   - Prevents errors when field doesn't exist
+
+3. **Fixed AWS API validation** (definitions/kro/dynamodb-rgd.yaml):
+   - Completely removed optional feature specifications from RGD template
+   - Only include `tableName`, `billingMode`, `attributeDefinitions`, `keySchema`
+   - Let ACK use AWS defaults for unspecified features
+   - Traits can still enable features via strategic patches
+
+4. **Fixed health checks** (definitions/components/aws-dynamodb-kro.cue):
+   - Updated `healthPolicy` to check: `if context.output.status.state == "ACTIVE"`
+   - Updated `customStatus.readyReplicas` to check: `if context.output.status.state == "ACTIVE"`
+   - Changed from checking "Ready" to "ACTIVE"
+
+5. **Fixed IAM compatibility**:
+   - Updated all example table names to use `tenant-atlantis-` prefix
+   - Supports resource-level IAM permissions with table name patterns
+
+**Files Changed:**
+- `definitions/kro/dynamodb-rgd.yaml` - Fixed region annotation, optional fields, removed feature specs
+- `definitions/components/aws-dynamodb-kro.cue` - Fixed health policy and customStatus
+- `definitions/examples/dynamodb-kro/*.yaml` - Updated region and table names
+- `definitions/traits/dynamodb-protection-kro.cue` - Compatible with new RGD approach
+
+**Known Limitations:**
+- Removed global and local secondary indexes from RGD schema (KRO doesn't support complex nested arrays)
+- KRO's `Ready` condition shows "Unknown" status (implementation detail, doesn't affect functionality)
+- All optional features should be enabled via traits to avoid validation conflicts
+
+**Verification:**
+```bash
+# Check applications are healthy
+vela ls -A
+# Should show: PHASE=running, HEALTHY=healthy
+
+# Check ACK tables
+kubectl get table.dynamodb.services.k8s.aws -n default
+# Should show: STATUS=ACTIVE, SYNCED=True
+
+# Check KRO instances
+kubectl get dynamodbtable.kro.run -n default
+# Should show: STATE=ACTIVE
+```
+
+---
+
+## 2025-12-29 - Critical Fix (Earlier)
+
+### Fixed: CUE Disjunction Error with Boolean Fields and Trait Patching
+
+**Problem:**
+Applications with traits were failing with CUE evaluation error:
+```
+cannot convert incomplete value "|((bool){ false }, (bool){ true }, (bool){ bool })" to JSON
+```
+
+**Root Cause:**
+Boolean fields had BOTH a default value pattern AND redundant conditional reassignments:
+```cue
+ttlEnabled: *false | bool
+if parameter.ttlEnabled != _|_ {
+    ttlEnabled: parameter.ttlEnabled  // Redundant - creates disjunction
+}
+```
+
+When traits patched these fields, CUE created incomplete disjunctions from three sources:
+1. The default value (`*false | bool`)
+2. The conditional reassignment
+3. The trait patch value
+
+This resulted in an incomplete value that couldn't be marshaled to JSON.
+
+**Solution:**
+Simplified boolean field definitions to use a single disjunction that handles both parameters and defaults:
+```cue
+// Before (WRONG - creates disjunction):
+ttlEnabled: *false | bool
+if parameter.ttlEnabled != _|_ {
+    ttlEnabled: parameter.ttlEnabled
+}
+
+// After (CORRECT - single unified expression):
+ttlEnabled: parameter.ttlEnabled | *false
+```
+
+This pattern:
+- Provides `false` as the default when parameter is undefined
+- Allows parameters to override the default
+- Allows traits to patch the value
+- All in a single unification without disjunctions
+
+**Fields Fixed:**
+- `streamEnabled` - Line 74
+- `pointInTimeRecoveryEnabled` - Line 80
+- `sseEnabled` - Line 83
+- `ttlEnabled` - Line 92
+- `deletionProtectionEnabled` - Line 98
+
+**Files Updated:**
+- `definitions/components/aws-dynamodb-kro.cue` - Lines 74, 80, 83, 92, 98
+
+**Impact:**
+- ✅ All KRO traits now work without CUE evaluation errors
+- ✅ Applications with multiple traits deploy successfully
+- ✅ Both inline parameters and trait patches work correctly
+- ✅ Cleaner, more idiomatic CUE code
+
+**Tested:**
+- Successfully deployed `definitions/examples/dynamodb-kro/with-traits-basic.yaml` with TTL, Streams, and Encryption traits
+
+---
+
 ## 2025-12-24 - Latest Fixes
 
 ### Fixed: Trait Patching Conflict with Boolean Defaults

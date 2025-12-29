@@ -6,6 +6,20 @@ spec:
   schema:
     apiVersion: v1alpha1
     kind: DynamoDBTable
+
+    types:
+      AttributeDefinition:
+        attributeName: string
+        attributeType: string
+
+      KeySchemaElement:
+        attributeName: string
+        keyType: string
+
+      Tag:
+        key: string
+        value: string
+
     spec:
       tableName: string
       region: string
@@ -17,12 +31,11 @@ spec:
         writeCapacityUnits: integer
 
       # Schema definition
-      attributeDefinitions: object
-      keySchema: object
+      attributeDefinitions: "[]AttributeDefinition"
+      keySchema: "[]KeySchemaElement"
 
-      # Secondary indexes
-      globalSecondaryIndexes: object
-      localSecondaryIndexes: object
+      # Note: Global and local secondary indexes are not supported in this RGD
+      # For complex table schemas with secondary indexes, use ACK Table directly
 
       # Features
       streamEnabled: "boolean | default=false"
@@ -36,13 +49,13 @@ spec:
       deletionProtectionEnabled: "boolean | default=false"
       tableClass: string
 
-      # Tags - simplified to avoid schema issues
-      tags: object
+      # Tags
+      tags: "[]Tag"
     status:
       tableArn: ${table.status.ackResourceMetadata.arn}
       tableStatus: ${table.status.tableStatus}
       tableID: ${table.status.tableID}
-      latestStreamArn: ${table.status.latestStreamARN}
+      latestStreamArn: ${table.status.?latestStreamARN}
       itemCount: ${table.status.itemCount}
       tableSizeBytes: ${table.status.tableSizeBytes}
       creationDateTime: ${table.status.creationDateTime}
@@ -56,27 +69,9 @@ spec:
         metadata:
           name: ${schema.spec.tableName}
           annotations:
-            kro.run/region: ${schema.spec.region}
+            services.k8s.aws/region: ${schema.spec.region}
         spec:
           tableName: ${schema.spec.tableName}
           billingMode: ${schema.spec.billingMode}
           attributeDefinitions: ${schema.spec.attributeDefinitions}
           keySchema: ${schema.spec.keySchema}
-
-          streamSpecification:
-            streamEnabled: ${schema.spec.streamEnabled}
-            streamViewType: ${schema.spec.streamViewType}
-
-          continuousBackups:
-            pointInTimeRecoveryEnabled: ${schema.spec.pointInTimeRecoveryEnabled}
-
-          sseSpecification:
-            enabled: ${schema.spec.sseEnabled}
-            sseType: ${schema.spec.sseType}
-            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
-
-          timeToLive:
-            enabled: ${schema.spec.ttlEnabled}
-            attributeName: ${schema.spec.ttlAttributeName}
-
-          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}

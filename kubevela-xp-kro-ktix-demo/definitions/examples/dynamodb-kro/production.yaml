@@ -8,8 +8,8 @@ spec:
     - name: user-table
       type: aws-dynamodb-kro
       properties:
-        tableName: users-table-production
-        region: us-east-1
+        tableName: tenant-atlantis-users-table-production
+        region: us-west-2
         billingMode: PAY_PER_REQUEST
 
         # Define attributes used in keys or indexes
