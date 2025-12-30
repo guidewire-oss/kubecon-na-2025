@@ -1,12 +1,12 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: session-management
+  name: user-sessions-kro
   namespace: default
 spec:
   components:
-    # DynamoDB table for storing sessions with TTL and streams
-    - name: sessions-table
+    # DynamoDB table for storing sessions with TTL and streams (KRO + ACK)
+    - name: tenant-atlantis-user-sessions
       type: aws-dynamodb-kro
       properties:
         tableName: tenant-atlantis-user-sessions
@@ -25,8 +25,8 @@ spec:
           properties:
             viewType: KEYS_ONLY
 
-    # Session API application
-    - name: session-api
+    # Session API application (uses tenant-atlantis-user-sessions table via KRO)
+    - name: user-sessions-api-kro
       type: webservice
       properties:
         image: session-api:latest

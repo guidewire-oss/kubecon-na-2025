@@ -67,26 +67,26 @@ NC='\033[0m' # No Color
 # Helper functions
 print_step() {
     echo ""
-    echo "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo "${BLUE}$1${NC}"
-    echo "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
 }
 
 print_success() {
-    echo "${GREEN}✓ $1${NC}"
+    echo -e "${GREEN}✓ $1${NC}"
 }
 
 print_warning() {
-    echo "${YELLOW}⚠ $1${NC}"
+    echo -e "${YELLOW}⚠ $1${NC}"
 }
 
 print_error() {
-    echo "${RED}✗ $1${NC}"
+    echo -e "${RED}✗ $1${NC}"
 }
 
 print_info() {
-    echo "${CYAN}ℹ $1${NC}"
+    echo -e "${CYAN}ℹ $1${NC}"
 }
 
 # Check if running from correct directory
@@ -141,12 +141,28 @@ fi
 if [ "$SKIP_INSTALL" = false ]; then
     print_step "Phase 1: Creating Kubernetes Cluster"
 
-    # Check if cluster already exists - no interactive prompts
+    # Check if cluster already exists
     if k3d cluster list | grep -q "kubevela-demo"; then
-        print_info "Cluster 'kubevela-demo' already exists, using it"
-    fi
-
-    if ! k3d cluster list | grep -q "kubevela-demo"; then
+        print_info "Cluster 'kubevela-demo' already exists"
+        echo ""
+        read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "Deleting existing cluster..."
+            k3d cluster delete kubevela-demo
+            print_success "Cluster deleted"
+            echo ""
+            echo "Creating k3d cluster 'kubevela-demo' with 1 server and 2 agents..."
+            k3d cluster create kubevela-demo \
+                --servers 1 \
+                --agents 2 \
+                --wait \
+                --timeout 5m
+            print_success "Cluster created successfully"
+        else
+            print_info "Using existing cluster"
+        fi
+    else
         echo "Creating k3d cluster 'kubevela-demo' with 1 server and 2 agents..."
         k3d cluster create kubevela-demo \
             --servers 1 \
@@ -154,8 +170,6 @@ if [ "$SKIP_INSTALL" = false ]; then
             --wait \
             --timeout 5m
         print_success "Cluster created successfully"
-    else
-        print_success "Cluster is ready"
     fi
 
     # Wait for cluster to be ready
@@ -188,6 +202,23 @@ if [ "$SKIP_INSTALL" = false ]; then
 
     print_success "KubeVela is installed and ready"
     kubectl get pods -n vela-system
+
+    # Enable VelaUX addon
+    echo ""
+    echo "Enabling VelaUX addon..."
+    vela addon enable velaux || {
+        print_warning "VelaUX addon may already be enabled or installation failed"
+    }
+
+    # Wait for VelaUX to be ready
+    echo "Waiting for VelaUX to be ready..."
+    kubectl wait --namespace vela-system \
+        --for=condition=ready pod \
+        --selector=app.kubernetes.io/name=velaux \
+        --timeout=300s || {
+        print_warning "VelaUX may still be starting"
+    }
+    print_success "VelaUX addon is enabled"
 fi
 
 # =============================================================================
@@ -396,10 +427,10 @@ fi
 echo ""
 
 # Get the latest release version
-RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/dynamodb-controller/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
+RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/dynamodb-controller/releases/latest 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
 if [ -z "$RELEASE_VERSION" ]; then
-    print_warning "Could not determine latest version, using v1.0.14"
-    RELEASE_VERSION="1.0.14"
+    print_warning "Could not determine latest version, using v1.7.0"
+    RELEASE_VERSION="1.7.0"
 fi
 echo "Installing ACK DynamoDB controller version: $RELEASE_VERSION"
 
@@ -488,18 +519,56 @@ if [ "$SKIP_INSTALL" = false ]; then
 
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
     echo "Copying ACK credentials to default namespace for KRO-based applications..."
-    kubectl get secret ack-dynamodb-user-secrets -n ack-system -o yaml | \
+    # Delete existing secret first to avoid conflicts (may exist from previous runs)
+    kubectl delete secret ack-dynamodb-user-secrets -n default --ignore-not-found=true 2>/dev/null || true
+
+    # Wait a moment for deletion to complete
+    sleep 2
+
+    # Copy the secret with metadata stripped
+    if kubectl get secret ack-dynamodb-user-secrets -n ack-system -o yaml 2>/dev/null | \
         sed 's/namespace: ack-system/namespace: default/' | \
-        kubectl apply -f -
-    print_success "ACK credentials available in default namespace"
+        sed '/resourceVersion:/d' | \
+        sed '/uid:/d' | \
+        sed '/creationTimestamp:/d' | \
+        sed '/selfLink:/d' | \
+        kubectl create -f - 2>/dev/null; then
+        print_success "ACK credentials available in default namespace"
+    else
+        # If create fails, secret might exist - try to verify it's there
+        if kubectl get secret ack-dynamodb-user-secrets -n default >/dev/null 2>&1; then
+            print_success "ACK credentials already available in default namespace"
+        else
+            print_warning "Could not copy ACK credentials to default namespace"
+        fi
+    fi
 
     echo ""
     echo "Copying Crossplane credentials to default namespace for XP-based applications..."
-    kubectl get secret aws-credentials -n crossplane-system -o yaml | \
+    # Delete existing secret first to avoid conflicts
+    kubectl delete secret aws-credentials-xp -n default --ignore-not-found=true 2>/dev/null || true
+
+    # Wait a moment for deletion to complete
+    sleep 2
+
+    # Copy the secret with metadata stripped
+    if kubectl get secret aws-credentials -n crossplane-system -o yaml 2>/dev/null | \
         sed 's/namespace: crossplane-system/namespace: default/' | \
         sed 's/name: aws-credentials/name: aws-credentials-xp/' | \
-        kubectl apply -f -
-    print_success "Crossplane credentials available in default namespace"
+        sed '/resourceVersion:/d' | \
+        sed '/uid:/d' | \
+        sed '/creationTimestamp:/d' | \
+        sed '/selfLink:/d' | \
+        kubectl create -f - 2>/dev/null; then
+        print_success "Crossplane credentials available in default namespace"
+    else
+        # If create fails, secret might exist - try to verify it's there
+        if kubectl get secret aws-credentials-xp -n default >/dev/null 2>&1; then
+            print_success "Crossplane credentials already available in default namespace"
+        else
+            print_warning "Could not copy Crossplane credentials to default namespace"
+        fi
+    fi
 else
     print_warning "AWS credentials not configured, skipping credential copy"
 fi
@@ -592,13 +661,13 @@ print_success "Production namespace ready"
 # =============================================================================
 print_step "Phase 7: Deploying Crossplane Sample Applications"
 
-echo "${CYAN}Deploying 3 DynamoDB tables using Crossplane...${NC}"
+echo -e "${CYAN}Deploying 3 DynamoDB tables using Crossplane...${NC}"
 echo ""
 
 # Basic Crossplane example
 echo "1. Basic table (Crossplane)..."
-if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-table/basic.yaml" ]; then
-    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-table/basic.yaml"
+if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/basic.yaml" ]; then
+    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/basic.yaml"
     print_success "deployed: dynamodb-basic-xp"
 else
     print_warning "basic.yaml not found, skipping"
@@ -607,8 +676,8 @@ fi
 # Table with streams (Crossplane)
 echo ""
 echo "2. Table with Streams (Crossplane)..."
-if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-table/with-streams.yaml" ]; then
-    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-table/with-streams.yaml"
+if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/with-streams.yaml" ]; then
+    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/with-streams.yaml"
     print_success "deployed: dynamodb-streams-xp"
 else
     print_warning "with-streams.yaml not found, skipping"
@@ -617,8 +686,8 @@ fi
 # Production table (Crossplane)
 echo ""
 echo "3. Production table (Crossplane)..."
-if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-table/production.yaml" ]; then
-    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-table/production.yaml"
+if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/production.yaml" ]; then
+    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-xp/production.yaml"
     print_success "deployed: dynamodb-production-xp"
 else
     print_warning "production.yaml not found, skipping"
@@ -631,7 +700,7 @@ print_success "Crossplane applications deployed"
 # =============================================================================
 print_step "Phase 8: Deploying KRO Sample Applications"
 
-echo "${CYAN}Deploying 4 DynamoDB tables using KRO + ACK...${NC}"
+echo -e "${CYAN}Deploying 3 DynamoDB tables using KRO + ACK...${NC}"
 echo ""
 
 # Basic KRO example
@@ -643,7 +712,7 @@ else
     print_warning "basic.yaml not found, skipping"
 fi
 
-# Table with traits (KRO)
+# Table with traits (KRO) - demonstrates KRO's trait system
 echo ""
 echo "2. Session table with traits (KRO)..."
 if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/with-traits-basic.yaml" ]; then
@@ -653,29 +722,9 @@ else
     print_warning "with-traits-basic.yaml not found, skipping"
 fi
 
-# Production table (KRO)
-echo ""
-echo "3. Production table with full traits (KRO)..."
-if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/with-traits-production.yaml" ]; then
-    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/with-traits-production.yaml"
-    print_success "deployed: dynamodb-production-with-traits"
-else
-    print_warning "with-traits-production.yaml not found, skipping"
-fi
-
-# Cache table (KRO)
-echo ""
-echo "4. Cache table with TTL (KRO)..."
-if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/with-traits-cache.yaml" ]; then
-    kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/with-traits-cache.yaml"
-    print_success "deployed: dynamodb-cache-table"
-else
-    print_warning "with-traits-cache.yaml not found, skipping"
-fi
-
 # Simple basic table (KRO) - using SimpleDynamoDB RGD
 echo ""
-echo "5. Simple basic table (KRO)..."
+echo "3. Simple basic table (KRO with SimpleDynamoDB)..."
 if [ -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/simple-basic.yaml" ]; then
     kubectl apply -f "$DEMO_ROOT/definitions/examples/dynamodb-kro/simple-basic.yaml"
     print_success "deployed: dynamodb-simple-kro"
@@ -691,7 +740,7 @@ print_success "KRO applications deployed"
 print_step "Phase 8.5: Deploying Session Management Demo Application"
 
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
-    echo "${CYAN}Deploying Flask application with DynamoDB integration...${NC}"
+    echo -e "${CYAN}Deploying Flask application with DynamoDB integration...${NC}"
     echo ""
 
     # Check if Docker image exists and build if needed
@@ -716,7 +765,7 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
             # Deploy KRO-based version (advanced with traits)
             if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-kro.yaml" ]; then
                 vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-kro.yaml"
-                print_success "deployed: session-management (Flask API + KRO DynamoDB with traits)"
+                print_success "deployed: user-sessions-kro (Table: tenant-atlantis-user-sessions via KRO)"
             else
                 print_warning "session-management-app-kro.yaml not found, skipping KRO version"
             fi
@@ -724,7 +773,7 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
             # Deploy SimpleDynamoDB version (basic KRO)
             if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-simple-kro.yaml" ]; then
                 vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-simple-kro.yaml"
-                print_success "deployed: session-management-simple (Flask API + SimpleDynamoDB)"
+                print_success "deployed: user-sessions-simple-kro (Table: user-sessions-simple via SimpleDynamoDB KRO)"
             else
                 print_warning "session-management-app-simple-kro.yaml not found, skipping Simple KRO version"
             fi
@@ -732,7 +781,7 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
             # Deploy Crossplane-based version
             if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-xp.yaml" ]; then
                 vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-xp.yaml"
-                print_success "deployed: session-management-xp (Flask API + Crossplane DynamoDB with traits)"
+                print_success "deployed: sessions-xp (Table: tenant-atlantis-sessions-xp via Crossplane)"
             else
                 print_warning "session-management-app-xp.yaml not found, skipping Crossplane version"
             fi
@@ -793,15 +842,21 @@ kubectl get table.dynamodb.services.k8s.aws -A || print_warning "No ACK tables f
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Session Management Application Pods (KRO):"
+    echo "Session API Pods - tenant-atlantis-user-sessions (KRO):"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    kubectl get pods -l app.oam.dev/component=session-api || print_warning "No KRO session-api pods found yet"
+    kubectl get pods -l app.oam.dev/component=user-sessions-api-kro || print_warning "No user-sessions-api-kro pods found yet"
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Session Management Application Pods (Crossplane):"
+    echo "Session API Pods - user-sessions-simple (SimpleDynamoDB KRO):"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    kubectl get pods -l app.oam.dev/component=session-api-xp || print_warning "No Crossplane session-api pods found yet"
+    kubectl get pods -l app.oam.dev/component=user-sessions-simple-api-kro || print_warning "No user-sessions-simple-api-kro pods found yet"
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Session API Pods - tenant-atlantis-sessions-xp (Crossplane):"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    kubectl get pods -l app.oam.dev/component=sessions-api-xp || print_warning "No sessions-api-xp pods found yet"
 fi
 
 # =============================================================================
@@ -809,7 +864,7 @@ fi
 # =============================================================================
 print_step "Setup Complete! 🎉"
 
-echo "${GREEN}Your KubeCon NA 2025 DynamoDB Demo environment is ready!${NC}"
+echo -e "${GREEN}Your KubeCon NA 2025 DynamoDB Demo environment is ready!${NC}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📋 INFRASTRUCTURE DEPLOYED"
@@ -830,15 +885,15 @@ echo "  1. dynamodb-basic-xp              - Basic table with partition key"
 echo "  2. dynamodb-streams-xp            - Table with DynamoDB Streams"
 echo "  3. dynamodb-production-xp         - Full production configuration"
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
-echo "  4. session-management-xp          - Flask API + Crossplane DynamoDB"
+echo "  4. sessions-xp                    - Table: tenant-atlantis-sessions-xp + API"
 fi
 echo ""
-echo "  ${CYAN}Check status:${NC}"
+echo -e "  ${CYAN}Check status:${NC}"
 echo "    vela status dynamodb-basic-xp"
 echo "    kubectl get table.dynamodb.aws.upbound.io -A"
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
-echo "    vela status session-management-xp"
-echo "    kubectl get pods -l app.oam.dev/component=session-api-xp"
+echo "    vela status sessions-xp"
+echo "    kubectl get pods -l app.oam.dev/component=sessions-api-xp"
 fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -847,50 +902,51 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "  1. dynamodb-basic-example         - Basic table via KRO + ACK"
 echo "  2. dynamodb-traits-basic          - Session table with modular traits"
-echo "  3. dynamodb-production-with-traits - Full production with traits stack"
-echo "  4. dynamodb-cache-table           - Cache table with TTL auto-expiration"
-echo "  5. dynamodb-simple-kro            - Simple basic table (SimpleDynamoDB RGD)"
+echo "  3. dynamodb-simple-kro            - Simple basic table (SimpleDynamoDB RGD)"
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
-echo "  6. session-management             - Flask API + DynamoDB (demo app)"
+echo "  4. user-sessions-kro              - Table: tenant-atlantis-user-sessions + API"
+echo "  5. user-sessions-simple-kro       - Table: user-sessions-simple + API (SimpleDynamoDB)"
 fi
 echo ""
-echo "  ${CYAN}Check status:${NC}"
+echo -e "  ${CYAN}Check status:${NC}"
 echo "    vela status dynamodb-basic-example"
 echo "    kubectl get dynamodbtable         # Advanced tables"
 echo "    kubectl get simpledynamodb        # Simple tables"
 echo "    kubectl get table.dynamodb.services.k8s.aws -A"
 if [ "$AWS_CREDS_CONFIGURED" = true ]; then
-echo "    vela status session-management"
-echo "    kubectl get pods -l app.oam.dev/component=session-api"
+echo "    vela status user-sessions-kro"
+echo "    kubectl get pods -l app.oam.dev/component=user-sessions-api-kro"
+echo "    vela status user-sessions-simple-kro"
+echo "    kubectl get pods -l app.oam.dev/component=user-sessions-simple-api-kro"
 fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🔍 USEFUL COMMANDS"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  ${YELLOW}List all applications:${NC}"
+echo -e "  ${YELLOW}List all applications:${NC}"
 echo "    kubectl get applications.core.oam.dev"
 echo ""
-echo "  ${YELLOW}View application details:${NC}"
+echo -e "  ${YELLOW}View application details:${NC}"
 echo "    vela status <app-name>"
 echo "    vela status <app-name> --detail"
 echo "    kubectl describe application <app-name>"
 echo ""
-echo "  ${YELLOW}List component and trait definitions:${NC}"
+echo -e "  ${YELLOW}List component and trait definitions:${NC}"
 echo "    vela components | grep dynamodb"
 echo "    vela traits | grep dynamodb"
 echo ""
-echo "  ${YELLOW}Watch Crossplane resources:${NC}"
+echo -e "  ${YELLOW}Watch Crossplane resources:${NC}"
 echo "    watch kubectl get table.dynamodb.aws.upbound.io -A"
 echo ""
-echo "  ${YELLOW}Watch KRO resources:${NC}"
+echo -e "  ${YELLOW}Watch KRO resources:${NC}"
 echo "    watch kubectl get dynamodbtable"
 echo "    kubectl get resourcegraphdefinition dynamodbtable -o yaml"
 echo ""
-echo "  ${YELLOW}Watch ACK resources:${NC}"
+echo -e "  ${YELLOW}Watch ACK resources:${NC}"
 echo "    watch kubectl get table.dynamodb.services.k8s.aws -A"
 echo ""
-echo "  ${YELLOW}View logs:${NC}"
+echo -e "  ${YELLOW}View logs:${NC}"
 echo "    kubectl logs -n crossplane-system -l app=crossplane --tail=50 -f"
 echo "    kubectl logs -n kro-system -l control-plane=controller-manager --tail=50 -f"
 echo "    kubectl logs -n ack-system -l app.kubernetes.io/name=dynamodb-chart --tail=50 -f"
@@ -899,34 +955,34 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "📚 DOCUMENTATION"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  📖 ${CYAN}README.md${NC}"
+echo -e "  📖 ${CYAN}README.md${NC}"
 echo "     - Complete demo overview and quick start guide"
 echo "     - Architecture diagrams and comparisons"
 echo "     - Verification commands and troubleshooting"
 echo "     - Session management API testing guide"
 echo ""
-echo "  📖 ${CYAN}CHANGELOG.md${NC}"
+echo -e "  📖 ${CYAN}CHANGELOG.md${NC}"
 echo "     - Version history and important fixes"
 echo ""
-echo "  📖 ${CYAN}Component Documentation:${NC}"
+echo -e "  📖 ${CYAN}Component Documentation:${NC}"
 echo "     - definitions/DYNAMODB-COMPONENTS-SUMMARY.md (Comparison guide)"
 echo "     - definitions/DYNAMODB-KRO-SUMMARY.md (KRO architecture)"
 echo "     - definitions/components/aws-dynamodb-xp.md (Crossplane)"
 echo "     - definitions/components/aws-dynamodb-kro.md (KRO Advanced)"
 echo ""
-echo "  📖 ${CYAN}Trait Documentation:${NC}"
+echo -e "  📖 ${CYAN}Trait Documentation:${NC}"
 echo "     - definitions/traits/DYNAMODB-KRO-TRAITS-README.md (Trait guide)"
 echo "     - definitions/traits/*-xp.md (Crossplane trait docs)"
 echo "     - definitions/traits/*-kro.md (KRO trait docs)"
 echo ""
-echo "  📖 ${CYAN}Application Documentation:${NC}"
+echo -e "  📖 ${CYAN}Application Documentation:${NC}"
 echo "     - app/README.md (Session management API guide)"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎯 KEY COMPARISON"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "   ${CYAN}Crossplane (-xp)${NC}           ${CYAN}KRO (-kro)${NC}"
+echo -e "   ${CYAN}Crossplane (-xp)${NC}           ${CYAN}KRO (-kro)${NC}"
 echo "   ================           ==========="
 echo "   Mature & Stable            Experimental"
 echo "   Multi-cloud                AWS-specific"
@@ -936,13 +992,44 @@ echo "   6 traits available         5 traits available"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "${GREEN}Happy demoing! 🚀${NC}"
+echo -e "${GREEN}Happy demoing! 🚀${NC}"
 echo ""
-echo "${YELLOW}Note:${NC} AWS credentials not configured - applications will remain pending."
-echo "      This demo showcases the KubeVela abstraction layer working with"
-echo "      both Crossplane and KRO infrastructure engines side-by-side."
+
+# Display VelaUX access information
+echo -e "${CYAN}📊 VelaUX Dashboard:${NC}"
+echo "  Access the KubeVela dashboard with:"
+echo "    vela port-forward addon-velaux -n vela-system"
+echo "  Then open: http://localhost:8000"
 echo ""
-echo "      To actually provision DynamoDB tables, configure AWS credentials:"
-echo "      - Crossplane: Create ProviderConfig with AWS credentials"
-echo "      - KRO/ACK: Configure IRSA or AWS credentials for ACK controller"
+
+# Show AWS credential status
+if [ "$AWS_CREDS_CONFIGURED" = true ]; then
+    echo -e "${GREEN}✓ AWS credentials are configured${NC}"
+    echo "  DynamoDB tables are being provisioned in AWS"
+    echo "  Both Crossplane and KRO/ACK controllers are configured with AWS access"
+    echo ""
+    echo -e "  ${CYAN}Verify table creation:${NC}"
+    echo "    # Check Crossplane tables"
+    echo "    kubectl get table.dynamodb.aws.upbound.io -A"
+    echo ""
+    echo "    # Check KRO/ACK tables"
+    echo "    kubectl get table.dynamodb.services.k8s.aws -A"
+    echo ""
+    echo "    # List tables in AWS"
+    echo "    aws dynamodb list-tables --region us-west-2"
+else
+    echo -e "${YELLOW}⚠ AWS credentials not configured${NC}"
+    echo "  Applications are deployed but DynamoDB tables will remain pending."
+    echo "  This demo showcases the KubeVela abstraction layer working with"
+    echo "  both Crossplane and KRO infrastructure engines side-by-side."
+    echo ""
+    echo "  To actually provision DynamoDB tables, configure AWS credentials:"
+    echo "  1. Edit ../.env.aws with your AWS credentials"
+    echo "  2. Re-run setup.sh to configure the providers"
+    echo ""
+    echo "  Required credentials:"
+    echo "    - AWS_ACCESS_KEY_ID"
+    echo "    - AWS_SECRET_ACCESS_KEY"
+    echo "    - AWS_DEFAULT_REGION (default: us-west-2)"
+fi
 echo ""

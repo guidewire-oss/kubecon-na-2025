@@ -1,7 +1,7 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: session-management-xp
+  name: sessions-xp
   namespace: default
 spec:
   components:
@@ -26,8 +26,8 @@ spec:
           properties:
             viewType: KEYS_ONLY
 
-    # Session API application
-    - name: session-api-xp
+    # Session API application (uses tenant-atlantis-sessions-xp table via Crossplane)
+    - name: sessions-api-xp
       type: webservice
       properties:
         image: session-api:latest

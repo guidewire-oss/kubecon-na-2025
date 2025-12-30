@@ -66,6 +66,10 @@ template: {
         kind:       "Table"
         metadata: {
             name: context.name
+            annotations: {
+                // Crossplane external-name annotation determines the actual AWS table name
+                "crossplane.io/external-name": "tenant-atlantis-\(context.name)"
+            }
         }
         spec: {
             forProvider: {
