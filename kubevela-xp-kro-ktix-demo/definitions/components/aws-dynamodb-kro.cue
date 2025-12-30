@@ -188,37 +188,15 @@ template: {
 			}
 		}]
 
-		// Optional: Streams
-		// +usage=Enable DynamoDB streams
-		streamEnabled?: *false | bool
-
-		// +usage=Stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES)
-		streamViewType?: string
-
-		// Optional: Point-in-time recovery
-		// +usage=Enable point-in-time recovery
-		pointInTimeRecoveryEnabled?: *false | bool
-
 		// Optional: Server-side encryption
-		// +usage=Enable server-side encryption
-		sseEnabled?: *false | bool
-
 		// +usage=Encryption type (AES256 or KMS)
 		sseType?: string
 
-		// +usage=KMS master key ID for encryption
+		// +usage=KMS master key ID for encryption (only needed if sseType is KMS)
 		kmsMasterKeyID?: string
 
-		// Optional: Time to live
-		// +usage=Enable time to live
-		ttlEnabled?: *false | bool
-
-		// +usage=Attribute name for TTL
+		// +usage=Attribute name for TTL expiration
 		ttlAttributeName?: string
-
-		// Optional: Deletion protection
-		// +usage=Enable deletion protection
-		deletionProtectionEnabled?: *false | bool
 
 		// Optional: Table class
 		// +usage=Table class (STANDARD or STANDARD_INFREQUENT_ACCESS)

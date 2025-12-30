@@ -75,3 +75,19 @@ spec:
           billingMode: ${schema.spec.billingMode}
           attributeDefinitions: ${schema.spec.attributeDefinitions}
           keySchema: ${schema.spec.keySchema}
+          provisionedThroughput: ${schema.spec.provisionedThroughput}
+          streamSpecification:
+            streamEnabled: ${schema.spec.streamEnabled}
+            streamViewType: ${schema.spec.streamViewType}
+          pointInTimeRecoverySpecification:
+            pointInTimeRecoveryEnabled: ${schema.spec.pointInTimeRecoveryEnabled}
+          sseSpecification:
+            enabled: ${schema.spec.sseEnabled}
+            sseType: ${schema.spec.sseType}
+            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
+          timeToLiveSpecification:
+            enabled: ${schema.spec.ttlEnabled}
+            attributeName: ${schema.spec.ttlAttributeName}
+          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}
+          tableClass: ${schema.spec.tableClass}
+          tags: ${schema.spec.tags}

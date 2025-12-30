@@ -20,6 +20,8 @@ spec:
         kind: Table
         metadata:
           name: ${schema.spec.tableName}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
         spec:
           tableName: tenant-atlantis-${schema.spec.tableName}
           billingMode: PAY_PER_REQUEST
