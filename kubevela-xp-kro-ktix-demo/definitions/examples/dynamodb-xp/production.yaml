@@ -3,14 +3,14 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: production-dynamodb
+  name: dynamodb-production-xp
   namespace: production
 spec:
   components:
     - name: transactions-table
       type: aws-dynamodb-xp
       properties:
-        region: us-east-1
+        region: us-west-2
         attributeDefinitions:
           - attributeName: transactionId
             attributeType: "S"

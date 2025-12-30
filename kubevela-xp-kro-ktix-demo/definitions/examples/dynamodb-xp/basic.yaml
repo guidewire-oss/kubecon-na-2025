@@ -3,14 +3,14 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: basic-dynamodb-table
+  name: dynamodb-basic-xp
   namespace: default
 spec:
   components:
     - name: sessions-table
       type: aws-dynamodb-xp
       properties:
-        region: us-east-1
+        region: us-west-2
         attributeDefinitions:
           - attributeName: sessionId
             attributeType: "S"
