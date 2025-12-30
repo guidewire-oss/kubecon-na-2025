@@ -48,13 +48,6 @@ KUBECONFIG=./kubeconfig-internal vela ls -A
 
 Both should work without errors.
 
-### Reference Documentation
-
-For comprehensive information, users should read:
-- **[DEVCONTAINER_INDEX.md](DEVCONTAINER_INDEX.md)** - Navigation guide
-- **[KUBECONFIG_CHEATSHEET.md](KUBECONFIG_CHEATSHEET.md)** - Quick reference
-- **[DEVCONTAINER_ARCHITECTURE.md](DEVCONTAINER_ARCHITECTURE.md)** - How it works
-- **[DEVCONTAINER_KUBECONFIG_GUIDE.md](DEVCONTAINER_KUBECONFIG_GUIDE.md)** - Complete guide
 
 ## Project Context
 
@@ -404,11 +397,14 @@ After deploying an application:
 
 ## Documentation Structure
 
-- **README.md** - Main project documentation
-- **DEVCONTAINER_*** files - DevContainer-specific guides
-- **definitions/components/*.md** - Component documentation
-- **definitions/traits/*.md** - Trait documentation
-- **definitions/DYNAMODB-*.md** - DynamoDB-specific guides
+- **README.md** - Main project overview and demo architecture
+- **CLAUDE.md** - This file: AI assistant guidance and operational reference
+- **CHANGELOG.md** - Historical record of changes and fixes
+- **IAM_POLICY.md** - AWS IAM policy requirements and scoping
+- **app/README.md** - Session management API application documentation
+- **definitions/components/*.md** - Component definition reference
+- **definitions/examples/*/README.md** - Executable example walkthroughs
+- **definitions/traits/DYNAMODB-KRO-TRAITS-README.md** - Traits overview
 
 ## Important Notes
 
