@@ -360,7 +360,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/kro/releases/latest/download
 
 echo "Waiting for KRO controller to be ready..."
 sleep 10
-    kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s || {
+    kubectl wait --for=condition=Available deployment/kro -n kro-system --timeout=300s || {
         print_warning "KRO controller may still be starting, continuing..."
     }
     print_success "KRO controller is installed"
@@ -506,8 +506,8 @@ sleep 5
 
     # Restart KRO controller to pick up new RBAC permissions
     echo "Restarting KRO controller to apply RBAC changes..."
-    kubectl rollout restart deployment/kro-controller-manager -n kro-system
-    kubectl rollout status deployment/kro-controller-manager -n kro-system --timeout=120s
+    kubectl rollout restart deployment/kro -n kro-system
+    kubectl rollout status deployment/kro -n kro-system --timeout=120s
     print_success "KRO controller restarted with new permissions"
 fi
 
