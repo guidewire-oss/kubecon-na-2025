@@ -15,9 +15,9 @@ template: {
 
 	parameter: {
 		// +usage=Read capacity units (RCU) - each RCU provides 1 strongly consistent read/sec (4KB) or 2 eventually consistent reads/sec
-		readCapacityUnits: int
+		readCapacityUnits: *5 | int & >0
 
 		// +usage=Write capacity units (WCU) - each WCU provides 1 write/sec (1KB)
-		writeCapacityUnits: int
+		writeCapacityUnits: *5 | int & >0
 	}
 }
