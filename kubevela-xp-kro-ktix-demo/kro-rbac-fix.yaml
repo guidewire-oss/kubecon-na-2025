@@ -3,18 +3,33 @@ kind: ClusterRole
 metadata:
   name: kro:controller:dynamic-resources
 rules:
+# KRO ResourceGraphDefinitions - Required for KRO to manage resource orchestration
 - apiGroups:
   - "kro.run"
   resources:
-  - "*"
+  - "resourcegraphdefinitions"
+  - "dynamodbtables"
   verbs:
-  - "*"
+  - "create"
+  - "delete"
+  - "get"
+  - "list"
+  - "patch"
+  - "update"
+  - "watch"
+# DynamoDB table management via ACK (AWS Controllers for Kubernetes)
 - apiGroups:
   - "dynamodb.services.k8s.aws"
   resources:
-  - "*"
+  - "tables"
   verbs:
-  - "*"
+  - "create"
+  - "delete"
+  - "get"
+  - "list"
+  - "patch"
+  - "update"
+  - "watch"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
