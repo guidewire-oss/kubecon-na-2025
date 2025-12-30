@@ -8,7 +8,7 @@ spec:
     - name: session-table
       type: aws-dynamodb-kro
       properties:
-        tableName: tenant-atlantis-user-sessions
+        tableName: user-sessions
         region: us-west-2
 
         # Basic schema
