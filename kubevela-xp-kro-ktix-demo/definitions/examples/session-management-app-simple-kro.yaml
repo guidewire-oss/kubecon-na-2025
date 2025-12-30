@@ -1,19 +1,19 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: session-management-simple
+  name: user-sessions-simple-kro
   namespace: default
 spec:
   components:
-    # DynamoDB table for storing sessions (SimpleDynamoDB - basic)
-    - name: sessions-table-simple
+    # DynamoDB table for storing sessions (SimpleDynamoDB - basic KRO)
+    - name: user-sessions-simple
       type: aws-dynamodb-simple-kro
       properties:
         tableName: user-sessions-simple
         region: us-west-2
 
-    # Session API application
-    - name: session-api-simple
+    # Session API application (uses user-sessions-simple table via SimpleDynamoDB KRO)
+    - name: user-sessions-simple-api-kro
       type: webservice
       properties:
         image: session-api:latest

@@ -12,10 +12,8 @@ template: {
             billingMode: "PROVISIONED"
 
             // Set provisioned throughput
-            provisionedThroughput: {
-                readCapacityUnits: parameter.readCapacityUnits
-                writeCapacityUnits: parameter.writeCapacityUnits
-            }
+            readCapacity: parameter.readCapacityUnits
+            writeCapacity: parameter.writeCapacityUnits
         }
     }
 

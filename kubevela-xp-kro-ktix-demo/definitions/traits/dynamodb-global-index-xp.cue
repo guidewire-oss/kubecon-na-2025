@@ -8,7 +8,23 @@
 template: {
     patch: {
         spec: forProvider: {
-            globalSecondaryIndexes: parameter.indexes
+            globalSecondaryIndex: [
+                for idx in parameter.indexes {
+                    name: idx.indexName
+                    hashKey: idx.keySchema[0].attributeName
+                    if len(idx.keySchema) > 1 {
+                        rangeKey: idx.keySchema[1].attributeName
+                    }
+                    projectionType: idx.projection.projectionType
+                    if idx.projection.nonKeyAttributes != _|_ {
+                        nonKeyAttributes: idx.projection.nonKeyAttributes
+                    }
+                    if idx.provisionedThroughput != _|_ {
+                        readCapacity: idx.provisionedThroughput.readCapacityUnits
+                        writeCapacity: idx.provisionedThroughput.writeCapacityUnits
+                    }
+                }
+            ]
         }
     }
 

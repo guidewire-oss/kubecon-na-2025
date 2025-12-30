@@ -15,19 +15,25 @@
 				}
 				"""#
 			customStatus: #"""
-				ready: {
-					readyReplicas: *0 | int
-				} & {
-					if context.output.status.state != _|_ {
-						if context.output.status.state == "ACTIVE" {
-							readyReplicas: 1
-						}
-					}
+				tableArn: *"" | string
+				tableState: *"Unknown" | string
+
+				if context.output.status.tableArn != _|_ {
+					tableArn: context.output.status.tableArn
 				}
-				message: *"Provisioning..." | string
-				if context.output.status.conditions != _|_ {
-					if len(context.output.status.conditions) > 0 {
-						message: context.output.status.conditions[0].message
+				if context.output.status.state != _|_ {
+					tableState: context.output.status.state
+				}
+
+				if context.status.healthy {
+					message: "Table ACTIVE - ARN: \(tableArn)"
+				}
+				if !context.status.healthy {
+					message: "Table provisioning - State: \(tableState)"
+					if context.output.status.conditions != _|_ {
+						if len(context.output.status.conditions) > 0 {
+							message: context.output.status.conditions[0].message
+						}
 					}
 				}
 				"""#
@@ -46,8 +52,8 @@ template: {
 			name: context.name
 		}
 		spec: {
-			// Table identification
-			tableName: parameter.tableName
+			// Table identification - automatically add tenant-atlantis- prefix
+			tableName: "tenant-atlantis-\(parameter.tableName)"
 			region:    parameter.region
 
 			// Billing configuration
