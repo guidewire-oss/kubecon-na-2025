@@ -389,10 +389,10 @@ spec:
 
 After deploying an application:
 ```bash
-1. Check component status: vela status <app-name>
-2. Check Kubernetes resources: kubectl get <resource-type>
-3. Check logs: kubectl logs -n default <pod-name>
-4. Test connectivity: kubectl port-forward ...
+1. Check component status: KUBECONFIG=./kubeconfig-internal vela status <app-name>
+2. Check Kubernetes resources: KUBECONFIG=./kubeconfig-internal kubectl get <resource-type>
+3. Check logs: KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name>
+4. Test connectivity: KUBECONFIG=./kubeconfig-internal kubectl port-forward ...
 ```
 
 ## Documentation Structure
