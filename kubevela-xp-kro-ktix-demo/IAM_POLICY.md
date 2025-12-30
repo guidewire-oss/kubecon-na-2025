@@ -127,7 +127,11 @@ cat > dynamodb-policy.json <<'EOF'
 {
   "Version": "2012-10-17",
   "Statement": [
-    // ... paste policy from above ...
+    {
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": "arn:aws:dynamodb:us-west-2:*:table/tenant-atlantis-*"
+    }
   ]
 }
 EOF
