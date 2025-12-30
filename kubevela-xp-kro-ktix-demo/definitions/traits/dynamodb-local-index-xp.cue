@@ -1,7 +1,6 @@
 "dynamodb-local-index-xp": {
     annotations: {}
     description: "Add local secondary indexes to DynamoDB table for alternate sort key queries (max 5 per table, 10GB per partition)"
-    annotations: {}
     type: "trait"
 }
 

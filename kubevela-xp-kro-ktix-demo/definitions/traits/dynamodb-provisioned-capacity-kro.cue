@@ -1,7 +1,6 @@
 "dynamodb-provisioned-capacity-kro": {
     annotations: {}
 	description: "Configure provisioned capacity mode for DynamoDB table with fixed read/write capacity units for predictable performance and cost"
-    annotations: {}
 	type: "trait"
 }
 

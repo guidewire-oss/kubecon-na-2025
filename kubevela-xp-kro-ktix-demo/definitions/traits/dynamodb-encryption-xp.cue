@@ -1,7 +1,6 @@
 "dynamodb-encryption-xp": {
     annotations: {}
     description: "Configure server-side encryption with custom KMS key for DynamoDB table (compliance and security requirement)"
-    annotations: {}
     type: "trait"
 }
 

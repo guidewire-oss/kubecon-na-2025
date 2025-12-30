@@ -1,7 +1,6 @@
 "dynamodb-streams-xp": {
     annotations: {}
     description: "Enable DynamoDB Streams for change data capture and event-driven architectures (enables Lambda triggers, analytics)"
-    annotations: {}
     type: "trait"
 }
 

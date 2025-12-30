@@ -1,7 +1,6 @@
 "dynamodb-streams-kro": {
     annotations: {}
 	description: "Enable DynamoDB Streams for change data capture and event-driven architectures (enables Lambda triggers, analytics, replication)"
-    annotations: {}
 	type: "trait"
 }
 
