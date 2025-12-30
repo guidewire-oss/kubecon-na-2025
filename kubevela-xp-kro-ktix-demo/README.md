@@ -110,7 +110,7 @@ Required tools:
 - `vela` - KubeVela CLI
 - `docker` - For building demo app
 
-> **🔧 DevContainer Users**: After running `setup.sh` or restarting the cluster, you **must** update `kubeconfig-internal` with the new k3d API server port. See **[DEVCONTAINER_KUBECONFIG_GUIDE.md](DEVCONTAINER_KUBECONFIG_GUIDE.md)** for the quick 30-second fix and full troubleshooting guide.
+> **🔧 DevContainer Users**: After running `setup.sh` or restarting the cluster, you **must** update `kubeconfig-internal` with the new k3d API server port. See **[CLAUDE.md](CLAUDE.md)** section "Fix kubeconfig-internal After Cluster Restart" for the quick 30-second fix and full troubleshooting guide.
 
 ### One-Command Setup
 
@@ -515,24 +515,18 @@ mv kubeconfig-internal-temp kubeconfig-internal
 
 ### DevContainer Setup (Important!)
 
-**All DevContainer users should start here:** **[DEVCONTAINER_INDEX.md](DEVCONTAINER_INDEX.md)** 🆕
+**DevContainer users**: See **[CLAUDE.md](CLAUDE.md)** section "DevContainer & Kubeconfig Management" for:
+- **Quick Fix** (30 seconds): One-liner to update kubeconfig after cluster restart
+- **Complete Reference**: DevContainer setup, kubeconfig management, and troubleshooting
 
-Then choose based on your needs:
+### Component & Trait Documentation
+- **[aws-dynamodb-xp.md](definitions/components/aws-dynamodb-xp.md)** - Crossplane component reference
+- **[aws-dynamodb-kro.md](definitions/components/aws-dynamodb-kro.md)** - KRO component reference
+- **[definitions/traits/DYNAMODB-KRO-TRAITS-README.md](definitions/traits/DYNAMODB-KRO-TRAITS-README.md)** - Available traits and their usage
 
-- **Quick Fix** (2 min): [KUBECONFIG_CHEATSHEET.md](KUBECONFIG_CHEATSHEET.md) - Copy-paste one-liner to fix after cluster restart
-- **Understand It** (20 min): [DEVCONTAINER_ARCHITECTURE.md](DEVCONTAINER_ARCHITECTURE.md) + [DEVCONTAINER_SETUP_SUMMARY.md](DEVCONTAINER_SETUP_SUMMARY.md) - Network diagrams and overview
-- **Complete Reference** (30 min): [DEVCONTAINER_KUBECONFIG_GUIDE.md](DEVCONTAINER_KUBECONFIG_GUIDE.md) - Comprehensive guide with all troubleshooting scenarios
-
-### Component Documentation
-- **[aws-dynamodb-xp.md](definitions/components/aws-dynamodb-xp.md)** - Crossplane component guide
-- **[aws-dynamodb-kro.md](definitions/components/aws-dynamodb-kro.md)** - KRO full component guide
-- **[aws-dynamodb-kro-simplified.md](definitions/components/aws-dynamodb-kro-simplified.md)** - 🆕 KRO simplified component guide
-
-### General Documentation
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history and fixes (includes 2025-12-29 fix)
-- **[definitions/DYNAMODB-COMPONENTS-SUMMARY.md](definitions/DYNAMODB-COMPONENTS-SUMMARY.md)** - Component comparison guide
-- **[definitions/DYNAMODB-KRO-SUMMARY.md](definitions/DYNAMODB-KRO-SUMMARY.md)** - KRO architecture details
-- **[definitions/traits/DYNAMODB-KRO-TRAITS-README.md](definitions/traits/DYNAMODB-KRO-TRAITS-README.md)** - Trait usage guide
+### Additional Documentation
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and notable fixes
+- **[IAM_POLICY.md](IAM_POLICY.md)** - AWS IAM policy requirements for the demo
 - **[app/README.md](app/README.md)** - Session management API documentation
 
 ## Cleanup
