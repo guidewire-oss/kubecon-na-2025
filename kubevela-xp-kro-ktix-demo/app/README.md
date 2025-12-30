@@ -111,7 +111,7 @@ curl http://localhost:8080/sessions
 
 ```bash
 # Build the image
-docker build -t session-api:latest .
+docker build -t session-api:v1.0.0 .
 
 # Run the container
 docker run -p 8080:8080 \
@@ -119,7 +119,7 @@ docker run -p 8080:8080 \
   -e AWS_REGION=us-west-2 \
   -e AWS_ACCESS_KEY_ID=your_key \
   -e AWS_SECRET_ACCESS_KEY=your_secret \
-  session-api:latest
+  session-api:v1.0.0
 ```
 
 ## Kubernetes Deployment with KubeVela
@@ -128,8 +128,8 @@ docker run -p 8080:8080 \
 
 ```bash
 # Build and load image into k3d
-docker build -t session-api:latest .
-k3d image import session-api:latest -c kubevela-demo
+docker build -t session-api:v1.0.0 .
+k3d image import session-api:v1.0.0 -c kubevela-demo
 
 # Deploy the application (includes DynamoDB table + API)
 kubectl apply -f ../definitions/examples/session-management-app.yaml

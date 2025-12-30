@@ -7,10 +7,10 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "🏗️  Building Docker image..."
 cd "${SCRIPT_DIR}"
-docker build -t session-api:latest .
+docker build -t session-api:v1.0.0 .
 
 echo "📦 Importing image into k3d cluster..."
-k3d image import session-api:latest -c kubevela-demo
+k3d image import session-api:v1.0.0 -c kubevela-demo
 
 echo "🚀 Deploying KubeVela application..."
 kubectl apply -f "${PROJECT_ROOT}/definitions/examples/session-management-app.yaml"

@@ -748,14 +748,14 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
     if [ -d "$DEMO_ROOT/app" ] && [ -f "$DEMO_ROOT/app/Dockerfile" ]; then
         echo "Building session-api Docker image..."
         cd "$DEMO_ROOT/app"
-        DOCKER_BUILDKIT=0 docker build -t session-api:latest . || {
+        DOCKER_BUILDKIT=0 docker build -t session-api:v1.0.0 . || {
             print_warning "Docker build failed, skipping app deployment"
             cd "$DEMO_ROOT"
         }
 
         if docker images | grep -q "session-api"; then
             echo "Importing image into k3d cluster..."
-            k3d image import session-api:latest -c kubevela-demo || {
+            k3d image import session-api:v1.0.0 -c kubevela-demo || {
                 print_warning "Image import failed, skipping app deployment"
             }
 

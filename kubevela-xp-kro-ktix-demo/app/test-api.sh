@@ -27,6 +27,10 @@ SESSION_RESPONSE=$(curl -s -X POST "${API_URL}/sessions" \
   -d '{"userId": "testuser123", "data": {"theme": "dark", "language": "en", "notifications": true}}')
 echo "$SESSION_RESPONSE" | jq '.'
 SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.sessionId')
+if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
+  echo "❌ Failed to create session: sessionId not found in response"
+  exit 1
+fi
 echo "Created session ID: ${SESSION_ID}"
 echo ""
 
@@ -54,6 +58,10 @@ SESSION_RESPONSE_2=$(curl -s -X POST "${API_URL}/sessions" \
   -d '{"userId": "testuser123", "data": {"theme": "auto", "language": "fr"}}')
 echo "$SESSION_RESPONSE_2" | jq '.'
 SESSION_ID_2=$(echo "$SESSION_RESPONSE_2" | jq -r '.sessionId')
+if [ -z "$SESSION_ID_2" ] || [ "$SESSION_ID_2" = "null" ]; then
+  echo "❌ Failed to create second session: sessionId not found in response"
+  exit 1
+fi
 echo ""
 
 # Test 8: Get all sessions for user

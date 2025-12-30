@@ -159,6 +159,7 @@ def update_session(session_id):
         response = table.update_item(
             Key={'id': session_id},
             UpdateExpression='SET #data = :data, updatedAt = :updated',
+            ConditionExpression='attribute_exists(id)',
             ExpressionAttributeNames={'#data': 'data'},
             ExpressionAttributeValues={
                 ':data': json.dumps(session_data),

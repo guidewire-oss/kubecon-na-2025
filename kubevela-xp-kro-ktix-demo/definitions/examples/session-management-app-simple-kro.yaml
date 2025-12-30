@@ -16,7 +16,7 @@ spec:
     - name: user-sessions-simple-api-kro
       type: webservice
       properties:
-        image: session-api:latest
+        image: session-api:v1.0.0
         imagePullPolicy: IfNotPresent
         ports:
           - port: 8080

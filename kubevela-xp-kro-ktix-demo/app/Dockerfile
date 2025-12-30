@@ -18,7 +18,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8080/health')"
+  CMD python -c "import requests; requests.get('http://localhost:8080/health').raise_for_status()"
 
 # Run the application
 CMD ["python", "session-api.py"]
