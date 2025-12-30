@@ -1,2 +1,2 @@
 #!/bin/bash
-docker exec k3d-kubevela-demo-server-0 kubectl "$@"
+docker exec -i k3d-kubevela-demo-server-0 kubectl "$@"

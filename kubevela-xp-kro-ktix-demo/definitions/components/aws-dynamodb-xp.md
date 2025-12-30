@@ -27,7 +27,7 @@ The `dynamodb-table` component creates AWS DynamoDB NoSQL database tables using 
 
 | Parameter | Type | Description | Example |
 |-----------|------|-------------|---------|
-| region | string | AWS region where the table will be created | `us-east-1` |
+| region | string | AWS region where the table will be created | `us-west-2` |
 | attributeDefinitions | array | Attribute definitions for keys and indexes | See below |
 | keySchema | array | Primary key schema (partition key + optional sort key) | See below |
 
@@ -46,7 +46,7 @@ The `dynamodb-table` component creates AWS DynamoDB NoSQL database tables using 
 - **Type**: `string`
 - **Required**: Yes
 - **Description**: AWS region where the DynamoDB table will be created
-- **Example**: `us-east-1`, `us-west-2`, `eu-west-1`
+- **Example**: `us-west-2`, `us-east-1`, `eu-west-1`
 
 #### `attributeDefinitions`
 - **Type**: `array`
@@ -221,7 +221,7 @@ spec:
     - name: sessions-table
       type: dynamodb-table
       properties:
-        region: us-east-1
+        region: us-west-2
         attributeDefinitions:
           - attributeName: sessionId
             attributeType: "S"
@@ -278,7 +278,7 @@ spec:
     - name: archive-table
       type: dynamodb-table
       properties:
-        region: us-east-1
+        region: us-west-2
         attributeDefinitions:
           - attributeName: recordId
             attributeType: "S"
