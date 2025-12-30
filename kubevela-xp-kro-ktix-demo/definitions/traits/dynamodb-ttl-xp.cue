@@ -1,7 +1,6 @@
 "dynamodb-ttl-xp": {
     annotations: {}
     description: "Enable Time To Live (TTL) for automatic expiration and deletion of items based on a timestamp attribute"
-    annotations: {}
     type: "trait"
 }
 

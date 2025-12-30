@@ -1,7 +1,6 @@
 "dynamodb-provisioned-capacity-xp": {
     annotations: {}
     description: "Configure provisioned throughput capacity for DynamoDB table (cost control for predictable workloads)"
-    annotations: {}
     type: "trait"
 }
 

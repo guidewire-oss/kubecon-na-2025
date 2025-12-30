@@ -1,7 +1,6 @@
 "dynamodb-global-index-xp": {
     annotations: {}
     description: "Add global secondary indexes to DynamoDB table for alternate query patterns (increases costs with additional read/write capacity)"
-    annotations: {}
     type: "trait"
 }
 

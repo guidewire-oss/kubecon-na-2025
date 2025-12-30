@@ -1,7 +1,6 @@
 "dynamodb-encryption-kro": {
     annotations: {}
 	description: "Enable server-side encryption for DynamoDB table data at rest (AES256 or AWS KMS)"
-    annotations: {}
 	type: "trait"
 }
 

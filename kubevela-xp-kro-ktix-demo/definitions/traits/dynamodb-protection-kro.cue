@@ -1,7 +1,6 @@
 "dynamodb-protection-kro": {
     annotations: {}
 	description: "Enable data protection features for DynamoDB table including deletion protection and point-in-time recovery"
-    annotations: {}
 	type: "trait"
 }
 

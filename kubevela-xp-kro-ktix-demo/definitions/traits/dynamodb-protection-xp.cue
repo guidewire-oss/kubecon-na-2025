@@ -1,7 +1,6 @@
 "dynamodb-protection-xp": {
     annotations: {}
     description: "Enable deletion protection and point-in-time recovery for DynamoDB table (data protection and compliance)"
-    annotations: {}
     type: "trait"
 }
 
