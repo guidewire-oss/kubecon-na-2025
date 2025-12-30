@@ -10,7 +10,7 @@ spec:
     - name: critical-data-table
       type: aws-dynamodb-xp
       properties:
-        region: us-east-1
+        region: us-west-2
         attributeDefinitions:
           - attributeName: dataId
             attributeType: "S"
