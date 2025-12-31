@@ -6,7 +6,7 @@ metadata:
 spec:
   components:
     # DynamoDB table for storing sessions with TTL and streams (KRO + ACK)
-    - name: tenant-atlantis-user-sessions
+    - name: user-sessions
       type: aws-dynamodb-kro
       properties:
         tableName: user-sessions
