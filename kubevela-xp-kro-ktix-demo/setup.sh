@@ -148,9 +148,36 @@ if [ "$SKIP_INSTALL" = false ]; then
         read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
         echo ""
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo "Deleting existing cluster..."
-            k3d cluster delete kubevela-demo
-            print_success "Cluster deleted"
+            echo ""
+            echo "Running cleanup script to verify resources are deleted before cluster deletion..."
+            echo ""
+
+            # Run clean.sh to properly clean up before deletion
+            if [ -f "$DEMO_ROOT/clean.sh" ]; then
+                # Determine environment based on kubeconfig
+                KUBECONFIG_FILE="$DEMO_ROOT/kubeconfig-internal"
+                if [ -f "$KUBECONFIG_FILE" ]; then
+                    ENVIRONMENT="--devcontainer"
+                    print_info "Using DevContainer environment"
+                else
+                    ENVIRONMENT="--host"
+                    print_info "Using Host environment"
+                fi
+
+                # Run clean.sh
+                bash "$DEMO_ROOT/clean.sh" "$ENVIRONMENT" || {
+                    print_error "Cleanup script failed or was aborted"
+                    print_warning "Cluster still exists - please manually clean up or run: k3d cluster delete kubevela-demo"
+                    exit 1
+                }
+                print_success "Cleanup completed successfully"
+            else
+                print_warning "clean.sh not found, proceeding with direct cluster deletion"
+                print_warning "WARNING: Some resources may not be properly cleaned up in AWS"
+                echo ""
+                k3d cluster delete kubevela-demo
+                print_success "Cluster deleted"
+            fi
             echo ""
             echo "Creating k3d cluster 'kubevela-demo' with 1 server and 2 agents..."
             k3d cluster create kubevela-demo \

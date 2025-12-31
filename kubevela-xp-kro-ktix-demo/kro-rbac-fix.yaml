@@ -9,6 +9,7 @@ rules:
   resources:
   - "resourcegraphdefinitions"
   - "dynamodbtables"
+  - "simpledynamodbs"
   verbs:
   - "create"
   - "delete"
@@ -17,6 +18,17 @@ rules:
   - "patch"
   - "update"
   - "watch"
+# KRO status subresource - Required for KRO to update status of managed resources
+- apiGroups:
+  - "kro.run"
+  resources:
+  - "resourcegraphdefinitions/status"
+  - "dynamodbtables/status"
+  - "simpledynamodbs/status"
+  verbs:
+  - "get"
+  - "patch"
+  - "update"
 # DynamoDB table management via ACK (AWS Controllers for Kubernetes)
 - apiGroups:
   - "dynamodb.services.k8s.aws"
