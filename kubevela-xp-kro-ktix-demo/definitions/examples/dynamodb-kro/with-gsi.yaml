@@ -5,10 +5,10 @@ metadata:
   namespace: default
 spec:
   components:
-    - name: user-table
+    - name: user-table-with-gsi
       type: aws-dynamodb-kro
       properties:
-        tableName: tenant-atlantis-users-table-with-gsi
+        tableName: users-table-with-gsi
         region: us-west-2
         billingMode: PAY_PER_REQUEST
 
