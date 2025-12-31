@@ -1,0 +1,54 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-staging-with-traits
+  namespace: default
+spec:
+  components:
+    - name: users-staging
+      type: aws-dynamodb-kro
+      properties:
+        tableName: users-staging
+        region: us-west-2
+
+        attributeDefinitions:
+          - attributeName: userId
+            attributeType: "S"
+          - attributeName: email
+            attributeType: "S"
+
+        keySchema:
+          - attributeName: userId
+            keyType: HASH
+
+        globalSecondaryIndexes:
+          - indexName: email-index
+            keySchema:
+              - attributeName: email
+                keyType: HASH
+            projection:
+              projectionType: ALL
+
+        tags:
+          - key: Environment
+            value: Staging
+
+      # Cost-optimized traits for staging
+      traits:
+        # Basic protection (prevent accidental deletion)
+        - type: dynamodb-protection-kro
+          properties:
+            deletionProtection: true
+            pointInTimeRecovery: false  # Skip PITR to save costs
+
+        # AWS-managed encryption (free)
+        - type: dynamodb-encryption-kro
+          properties:
+            sseType: AES256
+
+        # Streams for testing
+        - type: dynamodb-streams-kro
+          properties:
+            viewType: NEW_IMAGE
+
+        # Note: Using default PAY_PER_REQUEST billing (no provisioned trait)
