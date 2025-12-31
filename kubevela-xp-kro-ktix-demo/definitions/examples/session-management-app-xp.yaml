@@ -6,8 +6,8 @@ metadata:
 spec:
   components:
     # DynamoDB table for storing sessions (Crossplane) with TTL and streams
-    # Note: Component name becomes the Kubernetes resource name and AWS table name
-    - name: tenant-atlantis-sessions-xp
+    # Note: Component name becomes the Kubernetes resource name; aws-dynamodb-xp adds tenant-atlantis- prefix to AWS table name
+    - name: sessions-xp
       type: aws-dynamodb-xp
       properties:
         region: us-west-2
@@ -37,7 +37,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "tenant-atlantis-sessions-xp"
+            value: "tenant-atlantis-sessions-xp"  # Component name "sessions-xp" + prefix = "tenant-atlantis-sessions-xp"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS

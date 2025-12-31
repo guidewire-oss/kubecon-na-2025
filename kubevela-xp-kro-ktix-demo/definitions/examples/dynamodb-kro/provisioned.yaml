@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   components:
-    - name: orders-table
+    - name: orders-table-provisioned
       type: aws-dynamodb-kro
       properties:
         tableName: orders-table
