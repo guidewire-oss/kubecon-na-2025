@@ -71,18 +71,59 @@ delete_app "sessions-xp" "default"
 echo "Deleting applications from production namespace..."
 delete_app "dynamodb-production-xp" "production"
 
-# Wait for resources to be cleaned up
-echo "Waiting for resources to be cleaned up..."
-sleep 5
-
-# Verify all apps are deleted
+# Wait for resources to be cleaned up with retry logic
 echo ""
-echo "Verifying all applications are deleted..."
-REMAINING=$(KUBECONFIG="$KUBECONFIG" kubectl get app -A 2>/dev/null | grep -v "velaux\|vela-system" | wc -l)
-if [ "$REMAINING" -le 1 ]; then
-    echo "✓ All applications successfully deleted"
+echo "Waiting for all applications to be fully deleted..."
+MAX_WAIT=120
+WAIT_INTERVAL=5
+ELAPSED=0
+
+while [ $ELAPSED -lt $MAX_WAIT ]; do
+    REMAINING=$(KUBECONFIG="$KUBECONFIG" kubectl get app -A 2>/dev/null | grep -v "velaux\|vela-system\|^NAMESPACE" | wc -l)
+
+    if [ "$REMAINING" -eq 0 ]; then
+        echo "✓ All applications successfully deleted after ${ELAPSED}s"
+        break
+    else
+        echo "  Waiting for deletion... ($REMAINING apps remaining) [${ELAPSED}s]"
+        sleep $WAIT_INTERVAL
+        ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+    fi
+done
+
+# Final verification
+echo ""
+echo "Final verification of application deletion..."
+REMAINING=$(KUBECONFIG="$KUBECONFIG" kubectl get app -A 2>/dev/null | grep -v "velaux\|vela-system\|^NAMESPACE" | wc -l)
+
+if [ "$REMAINING" -eq 0 ]; then
+    echo "✓ All applications deleted successfully"
 else
-    echo "⚠ Warning: Some applications may still be deleting"
+    echo "⚠ Warning: $REMAINING application(s) still present:"
+    KUBECONFIG="$KUBECONFIG" kubectl get app -A 2>/dev/null | grep -v "velaux\|vela-system"
+    echo ""
+    read -p "Continue with cluster deletion anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Aborting cluster deletion"
+        exit 1
+    fi
+fi
+
+# Verify no DynamoDB resources remain
+echo ""
+echo "Verifying AWS resources are deleted..."
+KRO_TABLES=$(KUBECONFIG="$KUBECONFIG" kubectl get dynamodbtable.kro.run -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l)
+ACK_TABLES=$(KUBECONFIG="$KUBECONFIG" kubectl get table.dynamodb.services.k8s.aws -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l)
+XP_TABLES=$(KUBECONFIG="$KUBECONFIG" kubectl get table.dynamodb.aws.upbound.io -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l)
+
+if [ "$KRO_TABLES" -eq 0 ] && [ "$ACK_TABLES" -eq 0 ] && [ "$XP_TABLES" -eq 0 ]; then
+    echo "✓ All AWS DynamoDB resources cleaned up"
+else
+    echo "⚠ Warning: AWS resources may still exist"
+    [ "$KRO_TABLES" -gt 0 ] && echo "  - $KRO_TABLES KRO DynamoDBTable(s)"
+    [ "$ACK_TABLES" -gt 0 ] && echo "  - $ACK_TABLES ACK Table(s)"
+    [ "$XP_TABLES" -gt 0 ] && echo "  - $XP_TABLES Crossplane Table(s)"
 fi
 
 # Delete the cluster
