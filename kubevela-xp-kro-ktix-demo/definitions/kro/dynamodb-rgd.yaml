@@ -76,14 +76,3 @@ spec:
           billingMode: ${schema.spec.billingMode}
           attributeDefinitions: ${schema.spec.attributeDefinitions}
           keySchema: ${schema.spec.keySchema}
-          provisionedThroughput: ${schema.spec.provisionedThroughput}
-          streamSpecification:
-            streamEnabled: ${schema.spec.streamEnabled}
-            streamViewType: ${schema.spec.streamViewType}
-          sseSpecification:
-            enabled: ${schema.spec.sseEnabled}
-            sseType: ${schema.spec.sseType}
-            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
-          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}
-          tableClass: ${schema.spec.tableClass}
-          tags: ${schema.spec.tags}
