@@ -11,7 +11,24 @@ Before running these examples, ensure you have:
 3. **AWS credentials** configured (IRSA, IAM role, or AWS credentials)
 4. **ComponentDefinition** applied to your cluster
 
-See the [component documentation](../components/aws-dynamodb-kro.md) for detailed setup instructions.
+See the [component documentation](../../components/aws-dynamodb-kro.md) for detailed setup instructions.
+
+## Resource Adoption
+
+### adopt-existing.yaml
+
+**NEW**: Demonstrates adopting an existing DynamoDB table created outside Kubernetes.
+
+Instead of creating a new table, this example shows how to bring an existing table under KubeVela/KRO/ACK management. Perfect for:
+- Migrating legacy tables to Infrastructure-as-Code
+- Bringing manually-created tables under Kubernetes governance
+- Managing existing AWS resources without re-creating them
+
+**See**: [ADOPTION-GUIDE.md](./ADOPTION-GUIDE.md) for comprehensive adoption documentation, scenarios, and troubleshooting.
+
+```bash
+KUBECONFIG=./kubeconfig-internal vela up -f adopt-existing.yaml
+```
 
 ## Examples
 
