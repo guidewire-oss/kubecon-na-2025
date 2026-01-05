@@ -1,0 +1,89 @@
+# Production-ready DynamoDB table with comprehensive configuration
+# Includes: Provisioned capacity, encryption, protection, and streams
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-production-xp
+  namespace: production
+spec:
+  components:
+    - name: transactions-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-west-2
+        attributeDefinitions:
+          - attributeName: transactionId
+            attributeType: "S"
+          - attributeName: timestamp
+            attributeType: "N"
+          - attributeName: customerId
+            attributeType: "S"
+          - attributeName: status
+            attributeType: "S"
+        keySchema:
+          - attributeName: transactionId
+            keyType: HASH
+          - attributeName: timestamp
+            keyType: RANGE
+        tags:
+          - key: Environment
+            value: Production
+          - key: Application
+            value: FinancialTransactions
+          - key: Compliance
+            value: PCI-DSS
+          - key: CostCenter
+            value: Finance
+      traits:
+        # Provisioned capacity for cost control
+        - type: dynamodb-provisioned-capacity-xp
+          properties:
+            readCapacityUnits: 500
+            writeCapacityUnits: 250
+
+        # Global secondary indexes for query patterns
+        - type: dynamodb-global-index-xp
+          properties:
+            indexes:
+              # Query by customer
+              - indexName: CustomerIndex
+                keySchema:
+                  - attributeName: customerId
+                    keyType: HASH
+                  - attributeName: timestamp
+                    keyType: RANGE
+                projection:
+                  projectionType: ALL
+                provisionedThroughput:
+                  readCapacityUnits: 250
+                  writeCapacityUnits: 125
+
+              # Query by status
+              - indexName: StatusIndex
+                keySchema:
+                  - attributeName: status
+                    keyType: HASH
+                projection:
+                  projectionType: KEYS_ONLY
+                provisionedThroughput:
+                  readCapacityUnits: 100
+                  writeCapacityUnits: 50
+
+        # Custom KMS encryption for compliance
+        - type: dynamodb-encryption-xp
+          properties:
+            enabled: true
+            kmsKeyId: alias/finance-prod
+            sseType: KMS
+
+        # Data protection
+        - type: dynamodb-protection-xp
+          properties:
+            deletionProtection: true
+            pointInTimeRecovery: true
+
+        # Change data capture for audit
+        - type: dynamodb-streams-xp
+          properties:
+            enabled: true
+            viewType: NEW_AND_OLD_IMAGES

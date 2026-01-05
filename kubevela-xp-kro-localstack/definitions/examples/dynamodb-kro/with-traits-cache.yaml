@@ -1,0 +1,51 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-cache-table
+  namespace: default
+spec:
+  components:
+    - name: api-cache
+      type: aws-dynamodb-kro
+      properties:
+        tableName: api-response-cache
+        region: us-west-2
+
+        # Cache key structure
+        attributeDefinitions:
+          - attributeName: cacheKey
+            attributeType: "S"
+
+        keySchema:
+          - attributeName: cacheKey
+            keyType: HASH
+
+        # Tags
+        tags:
+          - key: Purpose
+            value: APICache
+          - key: Environment
+            value: Production
+
+      traits:
+        # Auto-expire cache entries
+        - type: dynamodb-ttl-kro
+          properties:
+            enabled: true
+            attributeName: ttl
+
+        # Basic encryption
+        - type: dynamodb-encryption-kro
+          properties:
+            sseType: AES256
+
+        # Protect table but not data (ephemeral)
+        - type: dynamodb-protection-kro
+          properties:
+            deletionProtection: true
+            pointInTimeRecovery: false  # No backup for cache data
+
+        # Track cache invalidations
+        - type: dynamodb-streams-kro
+          properties:
+            viewType: KEYS_ONLY

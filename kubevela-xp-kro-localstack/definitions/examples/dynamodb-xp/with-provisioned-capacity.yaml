@@ -1,0 +1,24 @@
+# DynamoDB table with provisioned capacity for predictable workloads
+# Use this for cost optimization when traffic is consistent
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: provisioned-table
+  namespace: default
+spec:
+  components:
+    - name: products-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-west-2
+        attributeDefinitions:
+          - attributeName: productId
+            attributeType: "S"
+        keySchema:
+          - attributeName: productId
+            keyType: HASH
+      traits:
+        - type: dynamodb-provisioned-capacity-xp
+          properties:
+            readCapacityUnits: 100
+            writeCapacityUnits: 50

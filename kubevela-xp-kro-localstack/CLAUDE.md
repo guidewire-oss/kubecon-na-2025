@@ -1,6 +1,14 @@
-# CLAUDE.md - Project-Specific Instructions for AI Assistants
+# CLAUDE.md - LocalStack Demo Developer Guide
 
-This file provides guidance to Claude Code and AI assistants working on this KubeVela DynamoDB demo project in a DevContainer environment.
+This file provides guidance for working on the **LocalStack version** of the KubeVela DynamoDB demo (not the AWS version in `kubevela-xp-kro-ktix-demo`).
+
+## Quick Context
+
+- **Purpose**: Crossplane vs KRO comparison using **LocalStack** (not real AWS)
+- **Location**: `/workspaces/workspace/kubecon-na-2025/kubevela-xp-kro-localstack/`
+- **AWS Required**: NO - completely local development
+- **Table Prefixes**: NO - use simple names like `sessions`, not `tenant-atlantis-sessions`
+- **Costs**: FREE - LocalStack runs in your cluster
 
 ## DevContainer & Kubeconfig Management
 
@@ -75,14 +83,15 @@ All commands should return without errors.
 
 ### Demo Purpose
 
-This project demonstrates Crossplane vs KRO (Kube Resource Orchestrator) for managing AWS DynamoDB tables through KubeVela's OAM abstraction layer.
+This project demonstrates Crossplane vs KRO (Kube Resource Orchestrator) for managing DynamoDB tables through KubeVela's OAM abstraction layer, using **LocalStack for local development** instead of AWS.
 
 ### Key Components
 
 - **KubeVela** - Application platform with OAM abstractions
-- **Crossplane** - Multi-cloud infrastructure provisioning
+- **Crossplane** - Infrastructure provisioning (Upbound AWS provider)
 - **KRO** - Kubernetes-native resource orchestration
-- **ACK** - AWS Controllers for Kubernetes (manages actual AWS resources)
+- **ACK** - AWS Controllers for Kubernetes (manages resources via KRO)
+- **LocalStack** - Local AWS emulation (runs in cluster, endpoint: `http://localstack.localstack-system.svc.cluster.local:4566`)
 - **k3d** - Kubernetes in Docker (runs on host machine)
 - **DevContainer** - Development environment (runs in separate container)
 
@@ -98,218 +107,173 @@ This project demonstrates Crossplane vs KRO (Kube Resource Orchestrator) for man
 
 ### Crossplane Components
 
-- **aws-dynamodb-xp.cue** - Crossplane-based DynamoDB component
-  - Uses Crossplane Upbound provider
+- **aws-dynamodb-simple-xp.cue** - Simplified Crossplane DynamoDB component
+  - Uses Crossplane Upbound AWS provider
   - Table name set via `crossplane.io/external-name` annotation
-  - All tables automatically prefixed with `tenant-atlantis-`
+  - **NO prefix** - uses simple names like `user-sessions`
+  - Pre-configured with basic settings (partition key `id`, PAY_PER_REQUEST)
+  - Default region: `us-west-2`
 
 ### KRO Components
 
-- **aws-dynamodb-kro.cue** - Full-featured KRO DynamoDB component
-  - Uses KRO + ACK for AWS resource management
-  - Supports inline parameters + traits
-  - Full AWS API available
+- **aws-dynamodb-simple-kro.cue** - Simplified KRO DynamoDB component
+  - Uses KRO + ACK for resource management via LocalStack
+  - **NO prefix** - uses simple names like `user-sessions`
+  - ResourceGraphDefinition: `simple-dynamodb-rgd.yaml`
+  - Pre-configured with basic settings (partition key `id`, PAY_PER_REQUEST)
+  - Default region: `us-west-2`
 
-- **aws-dynamodb-simple-kro.cue** - Simplified KRO component
-  - Uses ResourceGraphDefinition that adds `tenant-atlantis-` prefix
-  - Note: Component passes base name; RGD adds the prefix
-  - Don't double-add the prefix in the component
+## LocalStack Table Naming: Simple Names (No Prefix)
 
-## AWS Resource Naming: tenant-atlantis- Prefix (CRITICAL)
+**✨ KEY DIFFERENCE FROM AWS DEMO**: Table names in LocalStack do **NOT** require `tenant-atlantis-` prefix!
 
-**⚠️ CRITICAL REQUIREMENT**: All AWS DynamoDB tables MUST be prefixed with `tenant-atlantis-` to comply with IAM policy constraints.
+### Why No Prefix?
 
-### Why This Matters
+LocalStack is a local development environment - no IAM policy constraints. You can use simple, clean table names:
+- ✅ `user-sessions` instead of `tenant-atlantis-user-sessions`
+- ✅ `orders` instead of `tenant-atlantis-orders`
+- ✅ `products` instead of `tenant-atlantis-products`
 
-The AWS IAM policy for this demo is scoped to only allow DynamoDB operations on tables that:
-- Start with `tenant-atlantis-` prefix
-- Are in the `us-west-2` region
+This makes LocalStack demo **community-friendly** and prefix-free!
 
-Any table created without this prefix will be **immediately blocked by IAM** with `AccessDeniedException`.
+### Table Naming in LocalStack Demo
 
-### How Prefix Is Applied (By Component Type)
-
-| Component Type | Method | Example |
+| Component Type | Table Name | Example |
 |---|---|---|
-| **Crossplane (aws-dynamodb-xp)** | `crossplane.io/external-name` annotation | Annotation: `tenant-atlantis-sessions-table` |
-| **KRO Simple (aws-dynamodb-simple-kro)** | RGD automatically adds prefix | Pass `sessions-simple` → Creates `tenant-atlantis-sessions-simple` |
-| **KRO Full (aws-dynamodb-kro)** | Component template adds prefix | Pass `my-table` → Sends `tenant-atlantis-my-table` to KRO |
+| **Crossplane Simple** | Component name (via external-name) | Component named `user-sessions` → Table: `user-sessions` |
+| **KRO Simple** | tableName parameter | Pass `tableName: sessions` → Table: `sessions` |
 
 ### In Application YAML
 
-When defining a DynamoDB component:
-
 ```yaml
-# User specifies BASE name (without prefix)
-- name: my-sessions-table
+# Simple table name - no prefix needed!
+- name: user-sessions
   type: aws-dynamodb-simple-kro
   properties:
-    tableName: sessions  # ← User provides just "sessions"
+    tableName: user-sessions  # ← Just "user-sessions", not "tenant-atlantis-user-sessions"
     region: us-west-2
 ```
 
-The component/RGD creates the actual AWS table as: `tenant-atlantis-sessions`
-
 ### In Application Code
 
-When the application accesses the table, it MUST use the full prefixed name:
+Environment variables also use simple names:
 
 ```yaml
-# Environment variable MUST include the prefix
 env:
   - name: DYNAMODB_TABLE_NAME
-    value: "tenant-atlantis-sessions"  # ← Application uses full name
+    value: "user-sessions"  # ← No prefix needed!
   - name: AWS_REGION
     value: "us-west-2"
+  - name: LOCALSTACK_ENDPOINT
+    value: "http://localstack.localstack-system.svc.cluster.local:4566"
 ```
 
 ### Verification
 
-To verify a table was created with the correct prefix:
+Check created tables:
 
 ```bash
-# Check what tables exist in AWS
-KUBECONFIG=./kubeconfig-internal kubectl get dynamodbtable.dynamodb.services.k8s.aws -A
-
-# Check actual table name from KRO resource
+# List SimpleDynamoDB KRO resources
 KUBECONFIG=./kubeconfig-internal kubectl get simpledynamodb.kro.run -A
+# Shows: user-sessions, orders, etc. (no prefix)
+
+# List Crossplane resources
+KUBECONFIG=./kubeconfig-internal kubectl get table.dynamodb.aws.upbound.io -A
+# Shows: user-sessions-table, etc. (no prefix)
 ```
 
-Both should show `tenant-atlantis-*` naming.
+### Accessing LocalStack Tables
 
-### Common Mistake: Double Prefix
+Tables are accessible via LocalStack endpoint (set in controllers):
 
-**Problem**: If both component AND RGD add the prefix:
+```bash
+# List tables in LocalStack
+kubectl run aws-cli --image=amazon/aws-cli --rm -it --restart=Never -- \
+  --endpoint-url=http://localstack.localstack-system.svc.cluster.local:4566 \
+  --region=us-west-2 \
+  dynamodb list-tables
 ```
-User passes: "sessions"
-Component adds prefix: "tenant-atlantis-sessions"
-RGD adds prefix again: "tenant-atlantis-tenant-atlantis-sessions" ← WRONG!
-```
-
-**Solution**: For KRO Simple components, pass only the base name; the RGD adds the prefix automatically.
-
-### Common Mistake: Application Using Wrong Table Name
-
-**Problem**: Application tries to access table without prefix:
-```
-Application tries: DYNAMODB_TABLE_NAME="sessions"
-Actual table name: "tenant-atlantis-sessions"
-Result: IAM AccessDeniedException
-```
-
-**Solution**: Always use full prefixed name in application configuration.
-
-### Reference IAM Policy
-
-The demo uses an IAM policy like:
-```json
-{
-  "Effect": "Allow",
-  "Action": ["dynamodb:*"],
-  "Resource": "arn:aws:dynamodb:us-west-2:*:table/tenant-atlantis-*"
-}
-```
-
-Only resources matching `tenant-atlantis-*` pattern are allowed.
-
-## Table Naming Convention
-
-All DynamoDB table names follow this pattern:
-- **Pattern**: `tenant-atlantis-<base-name>`
-- **Example**: `tenant-atlantis-sessions`, `tenant-atlantis-users`, `tenant-atlantis-orders`
-- **Requirement**: Non-negotiable due to IAM policy scoping
-- **Best Practice**: Design table names to be descriptive after the prefix
-
-### How It Works Across Components
-
-- **Crossplane**: Uses `crossplane.io/external-name` annotation with prefix
-- **KRO (simple)**: RGD automatically adds prefix to tableName
-- **KRO (full)**: Component explicitly adds prefix (no RGD auto-prefixing)
-
-### In Applications
-
-When an application references a table:
-- If using simple KRO component: actual table is `tenant-atlantis-<base-name>`
-- Application must use full name: `DYNAMODB_TABLE_NAME=tenant-atlantis-<base-name>`
 
 ## Common Issues and Solutions
 
-### Issue: IAM AccessDeniedException on DynamoDB operations
+### Issue: LocalStack tables not created or not accessible
 
-**Problem**: Table operations fail with "User is not authorized to perform: dynamodb:* on resource: arn:aws:dynamodb:us-west-2:*:table/MY_TABLE_NAME"
+**Problem**: Pod can't connect to DynamoDB table
 
-**Root Cause**: Table name doesn't start with `tenant-atlantis-` prefix. IAM policy only allows tables matching `tenant-atlantis-*` pattern.
+**Root Cause**: Either LocalStack not running or endpoint not configured in controller
+
+**Verify LocalStack is running**:
+```bash
+KUBECONFIG=./kubeconfig-internal kubectl get pods -n localstack-system -l app.kubernetes.io/name=localstack
+# Should show 1 running pod
+```
+
+**Check LocalStack logs**:
+```bash
+KUBECONFIG=./kubeconfig-internal kubectl logs -n localstack-system -l app.kubernetes.io/name=localstack
+```
 
 **Fix**:
-1. Verify table name in AWS: `aws dynamodb list-tables --region us-west-2`
-2. Check table name format: Should be `tenant-atlantis-<name>`
-3. If table has wrong name: Delete and redeploy application
-4. Verify application environment variable has full prefixed name
+1. Ensure setup.sh completed Phase 2.5 (LocalStack installation)
+2. Verify ACK controller has LocalStack endpoint: `--set aws.endpoint_url=http://localstack...`
+3. Verify Crossplane ProviderConfig has LocalStack endpoint
+4. Wait 30 seconds after table creation (status eventually becomes ACTIVE)
 
-**Prevention**: Always ensure:
-- Components add the prefix (Crossplane annotation, KRO template)
-- Applications use the full prefixed table name in environment variables
+### Issue: Pod not reaching ready state
+
+**Problem**: Application pod shows `Ready: 0/1`
+
+**Root Cause**: Can't connect to DynamoDB table (LocalStack not running, table not created, or endpoint wrong)
+
+**Check logs**:
+```bash
+KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name>
+# Look for connection errors or table not found
+```
+
+**Checklist**:
+1. Is LocalStack pod running? `kubectl get pods -n localstack-system`
+2. Is DynamoDB table created? `kubectl get simpledynamodb -A` or `kubectl get table.dynamodb.aws.upbound.io -A`
+3. Does pod have LOCALSTACK_ENDPOINT env var set?
+4. Is table name correct (matches DYNAMODB_TABLE_NAME)?
+
+**Fix**:
+```bash
+# Wait a bit for table creation
+sleep 10
+
+# Check table status
+KUBECONFIG=./kubeconfig-internal kubectl describe simpledynamodb <table-name> -n default
+
+# Check ACK table status
+KUBECONFIG=./kubeconfig-internal kubectl describe table <table-name>.dynamodb.services.k8s.aws -n default
+```
 
 ### Issue: kubectl doesn't work after setup.sh
 
 **Fix**: Update kubeconfig-internal port (see "Quick Fix" section at top of file)
 
-### Issue: Crossplane tables failing with AccessDeniedException
+### Issue: LocalStack credentials errors
 
-**Check**: Are tables created with correct `tenant-atlantis-` prefix?
+**Problem**: Pods get authentication errors even though `test`/`test` credentials are set
 
-**Verify**:
+**Root Cause**: Credentials not propagated to pod environment or controller config
+
+**Check controller config**:
 ```bash
-KUBECONFIG=./kubeconfig-internal kubectl get table.dynamodb.aws.upbound.io -A
-# Check the external-name annotation - should be tenant-atlantis-*
+# For ACK
+KUBECONFIG=./kubeconfig-internal kubectl get deployment -n ack-system
+KUBECONFIG=./kubeconfig-internal kubectl describe deployment ack-dynamodb-controller -n ack-system
+# Look for aws_access_key_id and aws_secret_access_key in env
+
+# For Crossplane
+KUBECONFIG=./kubeconfig-internal kubectl get providerconfigusage -A
 ```
 
-**Fix**: Ensure:
-- Crossplane components use `crossplane.io/external-name` annotation with prefix
-- Annotation value: `tenant-atlantis-<base-name>`
-- Applications use correct full table names in environment variables
-
-### Issue: KRO SimpleDynamoDB tables have double prefix
-
-**Problem**: If component adds prefix AND RGD adds prefix → `tenant-atlantis-tenant-atlantis-*`
-
-**Identify**:
-```bash
-KUBECONFIG=./kubeconfig-internal kubectl get simpledynamodb -A
-# Check tableName - should be "tenant-atlantis-<base>" not "tenant-atlantis-tenant-atlantis-<base>"
-```
-
-**Fix**: Component should pass base name; RGD will add prefix automatically
-
-**Correct Pattern**:
-- User specifies: `tableName: sessions`
-- Component passes to KRO: `tableName: sessions` (base name only)
-- RGD adds prefix: `tenant-atlantis-sessions` (final AWS table name)
-
-### Issue: Application pods not ready - ReadinessProbe failing
-
-**Problem**: Pod shows `Ready:0/1`, logs show `AccessDeniedException`
-
-**Root Cause**: Application is looking for table with wrong name
-
-**Identify**:
-```bash
-KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name> | grep -i "arn:aws:dynamodb"
-# Look for the table name being accessed
-```
-
-**Fix**: Update `DYNAMODB_TABLE_NAME` environment variable to full prefixed name:
-```yaml
-env:
-  - name: DYNAMODB_TABLE_NAME
-    value: "tenant-atlantis-sessions"  # ← Must include prefix
-```
-
-Then redeploy the application:
-```bash
-KUBECONFIG=./kubeconfig-internal vela delete <app-name> --namespace default -y
-KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/<app>.yaml
-```
+**Fix**: Credentials should be `test`/`test` (hardcoded for LocalStack). If getting auth errors, check:
+1. setup.sh Phase 5.4 completed (LocalStack credentials created)
+2. ACK controller has `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars
+3. Application has `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars
 
 ## When Working With This Project
 

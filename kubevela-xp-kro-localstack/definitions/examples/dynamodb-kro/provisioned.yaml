@@ -1,0 +1,57 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-provisioned-example
+  namespace: default
+spec:
+  components:
+    - name: orders-table-provisioned
+      type: aws-dynamodb-kro
+      properties:
+        tableName: orders-table
+        region: us-west-2
+        billingMode: PROVISIONED
+
+        # Define attributes
+        attributeDefinitions:
+          - attributeName: orderId
+            attributeType: "S"
+          - attributeName: customerId
+            attributeType: "S"
+          - attributeName: orderDate
+            attributeType: "N"
+
+        # Primary key schema
+        keySchema:
+          - attributeName: orderId
+            keyType: HASH
+
+        # Provisioned throughput for main table
+        provisionedThroughput:
+          readCapacityUnits: 5
+          writeCapacityUnits: 5
+
+        # Global Secondary Index with provisioned throughput
+        globalSecondaryIndexes:
+          - indexName: customer-index
+            keySchema:
+              - attributeName: customerId
+                keyType: HASH
+              - attributeName: orderDate
+                keyType: RANGE
+            projection:
+              projectionType: ALL
+            provisionedThroughput:
+              readCapacityUnits: 5
+              writeCapacityUnits: 5
+
+        # Enable streams
+        streamEnabled: true
+        streamViewType: NEW_IMAGE
+
+        # Tags
+        tags:
+          - key: Environment
+            value: Development
+          - key: BillingMode
+            value: Provisioned

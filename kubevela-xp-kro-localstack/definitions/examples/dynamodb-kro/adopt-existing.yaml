@@ -1,0 +1,85 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-adopt-existing-example
+  namespace: default
+  annotations:
+    description: "Example demonstrating adoption of existing DynamoDB table using ACK"
+spec:
+  components:
+    # This component demonstrates adopting an existing DynamoDB table
+    # that was created outside of Kubernetes/KRO/ACK (e.g., via AWS Console or CLI)
+    - name: adopted-table
+      type: aws-dynamodb-kro
+      properties:
+        # IMPORTANT: For adoption, use the EXACT name of the existing table
+        # The component will add the "tenant-atlantis-" prefix, so if your table
+        # in AWS is named "tenant-atlantis-sessions-prod", specify: "sessions-prod"
+        #
+        # EXAMPLE: If you have an existing table in AWS named:
+        #   "tenant-atlantis-existing-sessions-table"
+        # Then specify:
+        tableName: existing-sessions-table
+
+        # Region must match where the existing table is located
+        region: us-west-2
+
+        # For adoption: these should match the existing table's configuration
+        # If they don't match, ACK will attempt to update the table to match
+        billingMode: PAY_PER_REQUEST
+
+        # Attributes must match the existing table's attributes
+        attributeDefinitions:
+          - attributeName: userId
+            attributeType: "S"
+          - attributeName: sessionId
+            attributeType: "S"
+
+        # Key schema must match the existing table's key schema
+        keySchema:
+          - attributeName: userId
+            keyType: HASH
+          - attributeName: sessionId
+            keyType: RANGE
+
+        # OPTIONAL: Add tags to help track adoption
+        tags:
+          - key: managed-by
+            value: kubevela-kro-ack
+          - key: adoption-date
+            value: "2025-12-31"
+          - key: environment
+            value: production
+
+---
+# ALTERNATIVE: If you prefer to use ACK's lower-level adoption mechanism,
+# you can also use the annotation-based adoption directly on an ACK DynamoDB resource.
+# This example shows the modern ACK adoption approach (for reference):
+
+# apiVersion: dynamodb.services.k8s.aws/v1alpha1
+# kind: Table
+# metadata:
+#   name: adopted-sessions-table
+#   namespace: default
+#   annotations:
+#     # Signal to ACK that this resource should adopt an existing AWS resource
+#     services.k8s.aws/adoption-policy: "adopt"
+#     # Provide the fields needed to identify the existing AWS table
+#     services.k8s.aws/adoption-fields: |
+#       {
+#         "name": "tenant-atlantis-existing-sessions-table"
+#       }
+# spec:
+#   # Specify the table schema to match the existing table
+#   attributeDefinitions:
+#     - attributeName: userId
+#       attributeType: S
+#     - attributeName: sessionId
+#       attributeType: S
+#   keySchema:
+#     - attributeName: userId
+#       keyType: HASH
+#     - attributeName: sessionId
+#       keyType: RANGE
+#   billingMode: PAY_PER_REQUEST
+#   # After adoption, this resource will be managed by ACK
