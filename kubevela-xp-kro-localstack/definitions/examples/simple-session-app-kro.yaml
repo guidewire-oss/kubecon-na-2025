@@ -1,0 +1,58 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: simple-session-app-kro
+  namespace: default
+spec:
+  components:
+    # Simple DynamoDB table via KRO + ACK
+    - name: user-sessions-table
+      type: aws-dynamodb-simple-kro
+      properties:
+        tableName: user-sessions
+        region: us-west-2
+
+    # Session API service
+    - name: session-api
+      type: webservice
+      properties:
+        image: localhost:5000/session-api:latest
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: DYNAMODB_TABLE_NAME
+            value: "user-sessions"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: LOCALSTACK_ENDPOINT
+            value: "http://localstack.localstack-system.svc.cluster.local:4566"
+          - name: AWS_ACCESS_KEY_ID
+            value: "test"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "test"
+          - name: SESSION_TTL_HOURS
+            value: "24"
+          - name: PORT
+            value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      traits:
+        # Optional: expose the service via ingress
+        - type: ingress
+          properties:
+            domain: localhost
+            http:
+              "/": 8080

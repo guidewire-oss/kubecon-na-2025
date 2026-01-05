@@ -1,0 +1,23 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-basic-example
+  namespace: default
+spec:
+  components:
+    - name: user-table
+      type: aws-dynamodb-kro
+      properties:
+        tableName: users-table
+        region: us-west-2
+        billingMode: PAY_PER_REQUEST
+
+        # Define attributes used in keys
+        attributeDefinitions:
+          - attributeName: userId
+            attributeType: "S"
+
+        # Primary key schema (partition key only)
+        keySchema:
+          - attributeName: userId
+            keyType: HASH

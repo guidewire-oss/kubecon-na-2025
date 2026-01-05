@@ -1,0 +1,78 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: user-sessions-kro
+  namespace: default
+spec:
+  components:
+    # DynamoDB table for storing sessions with TTL and streams (KRO + ACK)
+    - name: user-sessions
+      type: aws-dynamodb-kro
+      properties:
+        tableName: user-sessions
+        region: us-west-2
+        attributeDefinitions:
+          - attributeName: sessionId
+            attributeType: "S"
+        keySchema:
+          - attributeName: sessionId
+            keyType: HASH
+      traits:
+        - type: dynamodb-ttl-kro
+          properties:
+            attributeName: expiresAt
+        - type: dynamodb-streams-kro
+          properties:
+            viewType: KEYS_ONLY
+
+    # Session API application (uses tenant-atlantis-user-sessions table via KRO)
+    - name: user-sessions-api-kro
+      type: webservice
+      properties:
+        image: session-api:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: DYNAMODB_TABLE_NAME
+            value: "tenant-atlantis-user-sessions"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: SESSION_TTL_HOURS
+            value: "24"
+          - name: PORT
+            value: "8080"
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: "/aws/credentials"
+        volumeMounts:
+          secret:
+            - name: aws-creds
+              mountPath: /aws
+              secretName: ack-dynamodb-user-secrets
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      traits:
+        - type: scaler
+          properties:
+            replicas: 2
+        - type: resource
+          properties:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

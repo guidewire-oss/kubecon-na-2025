@@ -1,0 +1,42 @@
+# DynamoDB table with Global Secondary Index for alternate query patterns
+# Allows querying by email instead of userId
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: users-with-gsi
+  namespace: default
+spec:
+  components:
+    - name: users-table
+      type: aws-dynamodb-xp
+      properties:
+        region: us-east-1
+        attributeDefinitions:
+          - attributeName: userId
+            attributeType: "S"
+          - attributeName: email
+            attributeType: "S"
+          - attributeName: createdAt
+            attributeType: "N"
+        keySchema:
+          - attributeName: userId
+            keyType: HASH
+      traits:
+        - type: dynamodb-global-index-xp
+          properties:
+            indexes:
+              # Query by email
+              - indexName: EmailIndex
+                keySchema:
+                  - attributeName: email
+                    keyType: HASH
+                projection:
+                  projectionType: ALL
+
+              # Query by creation date
+              - indexName: CreatedAtIndex
+                keySchema:
+                  - attributeName: createdAt
+                    keyType: HASH
+                projection:
+                  projectionType: KEYS_ONLY

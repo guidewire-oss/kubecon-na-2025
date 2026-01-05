@@ -1,0 +1,30 @@
+image:
+  repository: localstack/localstack
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    edge:
+      port: 4566
+      targetPort: 4566
+
+startServices: "dynamodb"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+persistence:
+  enabled: false
+
+extraEnvVars:
+  - name: DEBUG
+    value: "1"
+  - name: DEFAULT_REGION
+    value: "us-west-2"

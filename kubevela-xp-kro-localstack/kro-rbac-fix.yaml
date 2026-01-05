@@ -1,0 +1,57 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro:controller:dynamic-resources
+rules:
+# KRO ResourceGraphDefinitions - Required for KRO to manage resource orchestration
+- apiGroups:
+  - "kro.run"
+  resources:
+  - "resourcegraphdefinitions"
+  - "dynamodbtables"
+  - "simpledynamodbs"
+  verbs:
+  - "create"
+  - "delete"
+  - "get"
+  - "list"
+  - "patch"
+  - "update"
+  - "watch"
+# KRO status subresource - Required for KRO to update status of managed resources
+- apiGroups:
+  - "kro.run"
+  resources:
+  - "resourcegraphdefinitions/status"
+  - "dynamodbtables/status"
+  - "simpledynamodbs/status"
+  verbs:
+  - "get"
+  - "patch"
+  - "update"
+# DynamoDB table management via ACK (AWS Controllers for Kubernetes)
+- apiGroups:
+  - "dynamodb.services.k8s.aws"
+  resources:
+  - "tables"
+  verbs:
+  - "create"
+  - "delete"
+  - "get"
+  - "list"
+  - "patch"
+  - "update"
+  - "watch"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kro:controller:dynamic-resources
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kro:controller:dynamic-resources
+subjects:
+- kind: ServiceAccount
+  name: kro
+  namespace: kro-system
