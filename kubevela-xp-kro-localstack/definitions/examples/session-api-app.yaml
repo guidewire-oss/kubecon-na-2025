@@ -1,18 +1,18 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: simple-session-app-kro
+  name: session-api-app
   namespace: default
 spec:
   components:
-    # Simple DynamoDB table via KRO + ACK
-    - name: user-sessions-table
+    # DynamoDB table for session storage
+    - name: sessions-table
       type: aws-dynamodb-simple-kro
       properties:
         tableName: user-sessions
         region: us-west-2
 
-    # Session API service
+    # Session Management API service
     - name: session-api
       type: webservice
       properties:
@@ -35,6 +35,8 @@ spec:
             value: "24"
           - name: PORT
             value: "8080"
+          - name: FLASK_ENV
+            value: "production"
         livenessProbe:
           httpGet:
             path: /health
@@ -49,10 +51,3 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-      traits:
-        # Optional: expose the service via ingress
-        - type: ingress
-          properties:
-            domain: localhost
-            http:
-              "/": 8080
