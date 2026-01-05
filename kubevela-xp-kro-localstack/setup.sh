@@ -249,34 +249,6 @@ if [ "$SKIP_INSTALL" = false ]; then
 fi
 
 # =============================================================================
-# PHASE 2.5: Install LocalStack
-# =============================================================================
-if [ "$SKIP_INSTALL" = false ]; then
-    print_step "Phase 2.5: Installing LocalStack"
-
-    echo "Adding LocalStack Helm repository..."
-    helm repo add localstack-charts https://localstack.github.io/helm-charts --force-update
-    helm repo update
-
-    kubectl create namespace localstack-system --dry-run=client -o yaml | kubectl apply -f -
-
-    helm install localstack localstack-charts/localstack \
-        -n localstack-system \
-        --values localstack-values.yaml \
-        --wait || {
-        print_error "LocalStack installation failed"
-        exit 1
-    }
-
-    kubectl wait --for=condition=ready pod \
-        -l app.kubernetes.io/name=localstack \
-        -n localstack-system \
-        --timeout=300s
-
-    print_success "LocalStack is ready"
-fi
-
-# =============================================================================
 # PHASE 3: Install Crossplane
 # =============================================================================
 if [ "$SKIP_INSTALL" = false ]; then
@@ -357,9 +329,9 @@ aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}"
 
         print_success "AWS credentials secret created"
 
-        # Create ProviderConfig for LocalStack
+        # Create ProviderConfig
         echo ""
-        echo "Creating ProviderConfig for LocalStack..."
+        echo "Creating ProviderConfig for AWS..."
         cat <<EOF | kubectl apply -f -
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
@@ -370,20 +342,16 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack-credentials
+      name: aws-credentials
       key: credentials
-  endpoint:
-    url:
-      type: Static
-      static: "http://localstack.localstack-system.svc.cluster.local:4566"
-    hostnameImmutable: true
-  skip_credentials_validation: true
-  skip_requesting_account_id: true
-  skip_metadata_api_check: true
-  s3_use_path_style: true
 EOF
 
-        print_success "ProviderConfig for LocalStack created"
+        print_success "ProviderConfig created"
+    fi
+else
+    print_warning "../.env.aws file not found"
+    echo "Crossplane provider will not be able to provision resources"
+fi
 
 echo "Waiting for DynamoDB CRDs to be available..."
 MAX_RETRIES=30
@@ -434,34 +402,55 @@ if [ "$SKIP_INSTALL" = false ]; then
 echo "Installing ACK DynamoDB controller from OCI registry..."
 echo "Note: ACK now uses OCI registries hosted on AWS ECR Public"
 
-# Create LocalStack credentials for ACK and Crossplane
+# Check for AWS credentials from ../.env.aws
 echo ""
-print_step "Phase 5.4: Creating LocalStack Credentials"
+print_info "Checking for AWS credentials..."
+if [ -f "../.env.aws" ]; then
+    print_success "Found ../.env.aws file"
+    source ../.env.aws
 
-echo "Creating Kubernetes secret for LocalStack (ACK controller)..."
-kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
+    if [ "$AWS_ACCESS_KEY_ID" == "your-access-key-id" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+        print_warning "AWS credentials not configured in ../.env.aws"
+        echo "Edit ../.env.aws with your AWS credentials to enable DynamoDB provisioning"
+        AWS_CREDS_CONFIGURED=false
+    else
+        print_success "AWS credentials loaded from ../.env.aws"
+        echo "Creating Kubernetes secret for ACK controller..."
+        kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
 
-LOCALSTACK_CREDENTIALS="[default]
-aws_access_key_id = test
-aws_secret_access_key = test"
+        # Create credentials in AWS shared credentials file format (required by ACK)
+        if [ -n "$AWS_SESSION_TOKEN" ]; then
+            echo "Including session token for temporary credentials"
+            CREDENTIALS_STRING="[default]
+aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+aws_session_token = ${AWS_SESSION_TOKEN}"
+        else
+            CREDENTIALS_STRING="[default]
+aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}"
+        fi
 
-kubectl create secret generic localstack-credentials \
-    -n ack-system \
-    --from-literal=credentials="$LOCALSTACK_CREDENTIALS" \
-    --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create secret generic ack-dynamodb-user-secrets \
+            -n ack-system \
+            --from-literal=credentials="$CREDENTIALS_STRING" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-print_success "LocalStack credentials configured for ACK"
-
-# Also create for Crossplane
-echo "Creating LocalStack credentials for Crossplane..."
-kubectl create namespace crossplane-system --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret generic localstack-credentials \
-    -n crossplane-system \
-    --from-literal=credentials="$LOCALSTACK_CREDENTIALS" \
-    --dry-run=client -o yaml | kubectl apply -f -
-
-print_success "LocalStack credentials configured for Crossplane"
+        print_success "AWS credentials configured for ACK"
+        AWS_CREDS_CONFIGURED=true
+    fi
+else
+    print_warning "../.env.aws file not found"
+    echo "Creating template ../.env.aws file..."
+    cat > ../.env.aws << 'EOF'
+# AWS Credentials for ACK and Crossplane
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_DEFAULT_REGION=us-west-2
+EOF
+    echo "✓ Template created. Edit ../.env.aws with your credentials."
+    AWS_CREDS_CONFIGURED=false
+fi
 echo ""
 
 # Get the latest release version
@@ -472,12 +461,12 @@ if [ -z "$RELEASE_VERSION" ]; then
 fi
 echo "Installing ACK DynamoDB controller version: $RELEASE_VERSION"
 
-# Configure Helm values for ACK with LocalStack
-LOCALSTACK_ENDPOINT="http://localstack.localstack-system.svc.cluster.local:4566"
+# Configure Helm values for ACK
 ACK_HELM_VALUES="--set=aws.region=us-west-2"
-ACK_HELM_VALUES="$ACK_HELM_VALUES --set=aws.endpoint_url=$LOCALSTACK_ENDPOINT"
-ACK_HELM_VALUES="$ACK_HELM_VALUES --set=aws.credentials.secretName=localstack-credentials"
-echo "Configuring ACK to use LocalStack endpoint"
+if [ "$AWS_CREDS_CONFIGURED" = true ]; then
+    ACK_HELM_VALUES="$ACK_HELM_VALUES --set=aws.credentials.secretName=ack-dynamodb-user-secrets"
+    echo "Configuring ACK to use AWS credentials from secret"
+fi
 
 if helm list -n ack-system | grep -q "ack-dynamodb-controller"; then
     print_info "ACK DynamoDB controller already installed, upgrading..."
@@ -553,32 +542,63 @@ fi
 # PHASE 5.6: Copy AWS Credentials to Default Namespace
 # =============================================================================
 if [ "$SKIP_INSTALL" = false ]; then
-    print_step "Phase 5.6: Copying LocalStack Credentials to Default Namespace"
+    print_step "Phase 5.6: Copying AWS Credentials to Default Namespace"
 
-    echo "Copying LocalStack credentials to default namespace for applications..."
+if [ "$AWS_CREDS_CONFIGURED" = true ]; then
+    echo "Copying ACK credentials to default namespace for KRO-based applications..."
     # Delete existing secret first to avoid conflicts (may exist from previous runs)
-    kubectl delete secret localstack-credentials -n default --ignore-not-found=true 2>/dev/null || true
+    kubectl delete secret ack-dynamodb-user-secrets -n default --ignore-not-found=true 2>/dev/null || true
 
     # Wait a moment for deletion to complete
     sleep 2
 
     # Copy the secret with metadata stripped
-    if kubectl get secret localstack-credentials -n ack-system -o yaml 2>/dev/null | \
+    if kubectl get secret ack-dynamodb-user-secrets -n ack-system -o yaml 2>/dev/null | \
         sed 's/namespace: ack-system/namespace: default/' | \
         sed '/resourceVersion:/d' | \
         sed '/uid:/d' | \
         sed '/creationTimestamp:/d' | \
         sed '/selfLink:/d' | \
         kubectl create -f - 2>/dev/null; then
-        print_success "LocalStack credentials available in default namespace"
+        print_success "ACK credentials available in default namespace"
     else
         # If create fails, secret might exist - try to verify it's there
-        if kubectl get secret localstack-credentials -n default >/dev/null 2>&1; then
-            print_success "LocalStack credentials already available in default namespace"
+        if kubectl get secret ack-dynamodb-user-secrets -n default >/dev/null 2>&1; then
+            print_success "ACK credentials already available in default namespace"
         else
-            print_warning "Could not copy LocalStack credentials to default namespace"
+            print_warning "Could not copy ACK credentials to default namespace"
         fi
     fi
+
+    echo ""
+    echo "Copying Crossplane credentials to default namespace for XP-based applications..."
+    # Delete existing secret first to avoid conflicts
+    kubectl delete secret aws-credentials-xp -n default --ignore-not-found=true 2>/dev/null || true
+
+    # Wait a moment for deletion to complete
+    sleep 2
+
+    # Copy the secret with metadata stripped
+    if kubectl get secret aws-credentials -n crossplane-system -o yaml 2>/dev/null | \
+        sed 's/namespace: crossplane-system/namespace: default/' | \
+        sed 's/name: aws-credentials/name: aws-credentials-xp/' | \
+        sed '/resourceVersion:/d' | \
+        sed '/uid:/d' | \
+        sed '/creationTimestamp:/d' | \
+        sed '/selfLink:/d' | \
+        kubectl create -f - 2>/dev/null; then
+        print_success "Crossplane credentials available in default namespace"
+    else
+        # If create fails, secret might exist - try to verify it's there
+        if kubectl get secret aws-credentials-xp -n default >/dev/null 2>&1; then
+            print_success "Crossplane credentials already available in default namespace"
+        else
+            print_warning "Could not copy Crossplane credentials to default namespace"
+        fi
+    fi
+else
+    print_warning "AWS credentials not configured, skipping credential copy"
+fi
 fi
 
 # =============================================================================

@@ -20,8 +20,12 @@ The simplest approach for DevContainer access is to create a fresh kubeconfig th
 
 ```bash
 # Get the current mapped port and create a new kubeconfig for devcontainer
-docker exec k3d-kubevela-demo-server-0 cat /etc/rancher/k3s/k3s.yaml | \
-  sed 's|server: https://127.0.0.1:6443|server: https://host.docker.internal:'$(docker port k3d-kubevela-demo-server-0 | grep 6443 | awk '{print $3}' | cut -d: -f2)'|' > kubeconfig-devcontainer
+# Use k3d kubeconfig command which handles all the details correctly
+PORT=$(docker port k3d-kubevela-demo-serverlb | grep 6443 | awk '{print $3}' | cut -d: -f2)
+k3d kubeconfig get kubevela-demo | \
+  sed 's|server: https://0.0.0.0:'"$PORT"'|server: https://host.docker.internal:'"$PORT"'|' | \
+  sed '/certificate-authority-data:/d' | \
+  sed '/server:/a\    insecure-skip-tls-verify: true' > kubeconfig-devcontainer
 
 # Verify it works
 KUBECONFIG=./kubeconfig-devcontainer kubectl get nodes
@@ -30,10 +34,12 @@ KUBECONFIG=./kubeconfig-devcontainer vela ls -A
 
 #### What This Does
 
-1. Extracts the kubeconfig from the running k3d server
-2. Replaces the `127.0.0.1:6443` (internal k3s port) with `host.docker.internal:<mapped-port>` (DevContainer→Host connection)
-3. Creates `kubeconfig-devcontainer` in the project directory
-4. Automatically handles TLS certificates and insecure verification
+1. Gets the current mapped port from k3d loadbalancer (not server container)
+2. Extracts the kubeconfig from k3d
+3. Replaces `0.0.0.0:<port>` with `host.docker.internal:<port>` (DevContainer→Host connection)
+4. Removes certificate-authority-data to avoid TLS cert validation issues
+5. Adds `insecure-skip-tls-verify: true` for DevContainer hostname mismatch
+6. Creates `kubeconfig-devcontainer` in the project directory
 
 #### Key Points About kubeconfig-devcontainer
 
@@ -49,16 +55,19 @@ If you prefer to keep the existing `kubeconfig-internal` file, you can update ju
 #### Quick Fix (After Cluster Restart)
 
 ```bash
-# Get new port and update kubeconfig in one command
-NEW_PORT=$(docker port k3d-kubevela-demo-server-0 | grep 6443 | awk '{print $3}' | cut -d: -f2) && \
-sed -i "s|server: https://host.docker.internal:[0-9]*$|server: https://host.docker.internal:$NEW_PORT|" kubeconfig-internal && \
+# Get new port from loadbalancer and regenerate kubeconfig
+PORT=$(docker port k3d-kubevela-demo-serverlb | grep 6443 | awk '{print $3}' | cut -d: -f2)
+k3d kubeconfig get kubevela-demo | \
+  sed 's|server: https://0.0.0.0:'"$PORT"'|server: https://host.docker.internal:'"$PORT"'|' | \
+  sed '/certificate-authority-data:/d' | \
+  sed '/server:/a\    insecure-skip-tls-verify: true' > kubeconfig-internal
 KUBECONFIG=./kubeconfig-internal kubectl get nodes
 ```
 
 #### Manual Fix (3 Steps)
 
-1. Find new port: `docker port k3d-kubevela-demo-server-0 | grep 6443`
-2. Edit `kubeconfig-internal` - update the `server:` line with new port
+1. Find new port: `docker port k3d-kubevela-demo-serverlb | grep 6443` (note: use serverlb, not server-0)
+2. Edit `kubeconfig-internal` - update the `server:` line from `0.0.0.0:<old-port>` to `host.docker.internal:<new-port>`
 3. Verify: `KUBECONFIG=./kubeconfig-internal kubectl get nodes`
 
 ### When to Update Kubeconfig
