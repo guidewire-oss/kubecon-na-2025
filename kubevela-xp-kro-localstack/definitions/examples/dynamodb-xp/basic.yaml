@@ -1,4 +1,4 @@
-# Basic DynamoDB table with minimal configuration
+# Basic DynamoDB table with minimal configuration (Crossplane)
 # Simple key-value store with partition key only
 apiVersion: core.oam.dev/v1beta1
 kind: Application
@@ -8,12 +8,7 @@ metadata:
 spec:
   components:
     - name: sessions-table
-      type: aws-dynamodb-xp
+      type: aws-dynamodb-simple-xp
       properties:
         region: us-west-2
-        attributeDefinitions:
-          - attributeName: sessionId
-            attributeType: "S"
-        keySchema:
-          - attributeName: sessionId
-            keyType: HASH
+        tableName: sessions-table

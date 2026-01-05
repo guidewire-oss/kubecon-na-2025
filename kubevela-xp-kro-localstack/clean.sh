@@ -107,37 +107,9 @@ kubectl get table.dynamodb.services.k8s.aws -A -o json 2>/dev/null | \
     fi
 done
 
-# Function to delete application with verbose output
-delete_app() {
-    local app_name="$1"
-    local namespace="${2:-default}"
-    echo "Deleting $app_name in namespace $namespace..."
-    vela delete "$app_name" --namespace "$namespace" -y 2>&1
-    local exit_code=$?
-    if [ $exit_code -eq 0 ]; then
-        echo "  ✓ Delete command accepted for $app_name"
-    else
-        echo "  ⚠ Delete command returned exit code $exit_code for $app_name"
-    fi
-}
-
-# Delete all applications from default namespace
-echo "Deleting applications from default namespace..."
-delete_app "dynamodb-basic-example" "default"
-delete_app "dynamodb-basic-xp" "default"
-delete_app "dynamodb-cache-table" "default"
-delete_app "dynamodb-production-example" "default"
-delete_app "dynamodb-production-with-traits" "default"
-delete_app "dynamodb-provisioned-example" "default"
-delete_app "dynamodb-simple-kro" "default"
-delete_app "dynamodb-staging-with-traits" "default"
-delete_app "dynamodb-streams-xp" "default"
-delete_app "dynamodb-with-gsi-example" "default"
-delete_app "sessions-xp" "default"
-
-# Delete applications from production namespace
-echo "Deleting applications from production namespace..."
-delete_app "dynamodb-production-xp" "production"
+# Delete all applications from all namespaces (more generic approach)
+echo "Deleting all VelaApplications from all namespaces..."
+kubectl delete app -A --all 2>&1 || echo "No applications found"
 
 # Wait for resources to be cleaned up with retry logic
 echo ""

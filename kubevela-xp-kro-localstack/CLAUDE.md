@@ -62,9 +62,7 @@ DynamoDB is the only LocalStack service enabled. Other services unavailable.
 ## Component Types Available
 
 - `aws-dynamodb-simple-kro` - Simple KRO table (partition key only)
-- `aws-dynamodb-kro` - Full KRO table with traits support
 - `aws-dynamodb-simple-xp` - Simple Crossplane table
-- `aws-dynamodb-xp` - Full Crossplane table with traits
 
 ## Quick Troubleshooting
 
@@ -79,15 +77,33 @@ DynamoDB is the only LocalStack service enabled. Other services unavailable.
 
 ```
 .
-├── create-kubeconfig.sh           # Reusable kubeconfig generator
-├── setup.sh                       # Full setup automation
-├── kubeconfig-internal            # Generated kubeconfig for DevContainer access
+├── create-kubeconfig.sh              # Kubeconfig generator (run after cluster restart)
+├── setup.sh                          # Full setup automation
+├── clean.sh                          # Cleanup script (deletes cluster and all resources)
+├── kubeconfig-internal               # Generated kubeconfig for DevContainer
+├── localstack-values.yaml            # LocalStack Helm values
 ├── definitions/
-│   ├── components/                # KubeVela component definitions
-│   ├── kro/                       # KRO ResourceGraphDefinitions
-│   └── examples/                  # Example applications
-├── app/                           # Session API source code
-└── tests/                         # Connectivity and integration tests
+│   ├── components/
+│   │   ├── aws-dynamodb-simple-kro.cue    # KRO simple table component
+│   │   └── aws-dynamodb-simple-xp.cue     # Crossplane simple table component
+│   ├── kro/
+│   │   └── simple-dynamodb-rgd.yaml       # KRO ResourceGraphDefinition
+│   └── examples/
+│       ├── session-api-app.yaml           # Complete app (table + API) - START HERE
+│       ├── dynamodb-kro/
+│       │   ├── basic.yaml                 # KRO basic example
+│       │   └── simple-basic.yaml          # KRO simple example
+│       └── dynamodb-xp/
+│           └── basic.yaml                 # Crossplane basic example
+├── app/
+│   ├── README.md                    # Session API documentation
+│   └── session-api.py               # Flask API implementation
+├── tests/
+│   ├── test_localstack-simple.sh    # LocalStack connectivity test
+│   ├── test_localstack.sh           # LocalStack with aws-cli test
+│   └── test_kro_integration.sh      # KRO integration test
+├── README.md                        # Project overview
+└── CLAUDE.md                        # This file
 ```
 
 ## Testing
