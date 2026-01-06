@@ -28,8 +28,19 @@ Components installed in order:
 ## Working with Applications
 
 ### Deploy Application
+
+Deploy both for side-by-side comparison:
 ```bash
-KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app.yaml
+# Deploy KRO-based session API
+KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
+
+# Deploy Crossplane-based session API (separate cluster)
+KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-xp.yaml
+```
+
+Or deploy just one:
+```bash
+KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
 ```
 
 ### Check Status
@@ -46,7 +57,13 @@ KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name>
 
 ## Available Examples
 
-- `session-api-app.yaml` - DynamoDB table + Flask API (KRO) - **START HERE**
+### Complete Applications (Table + Webservice)
+
+- `session-api-app-kro.yaml` - KRO-based session API (table + Flask API) - **START HERE**
+- `session-api-app-xp.yaml` - Crossplane-based session API (table + Flask API)
+
+### Simple Table Examples
+
 - `dynamodb-kro/simple-basic.yaml` - Simple table only (KRO)
 - `dynamodb-kro/basic.yaml` - Basic KRO example
 - `dynamodb-xp/basic.yaml` - Basic Crossplane example
@@ -89,7 +106,8 @@ DynamoDB is the only LocalStack service enabled. Other services unavailable.
 │   ├── kro/
 │   │   └── simple-dynamodb-rgd.yaml       # KRO ResourceGraphDefinition
 │   └── examples/
-│       ├── session-api-app.yaml           # Complete app (table + API) - START HERE
+│       ├── session-api-app-kro.yaml       # KRO session API (table + Flask) - START HERE
+│       ├── session-api-app-xp.yaml        # Crossplane session API (table + Flask)
 │       ├── dynamodb-kro/
 │       │   ├── basic.yaml                 # KRO basic example
 │       │   └── simple-basic.yaml          # KRO simple example
