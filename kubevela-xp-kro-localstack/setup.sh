@@ -249,32 +249,36 @@ if [ "$SKIP_INSTALL" = false ]; then
     print_success "KRO installed"
 fi
 
-# PHASE 6: ACK
-if [ "$SKIP_INSTALL" = false ]; then
-    print_step "Phase 6: Installing ACK DynamoDB"
+# PHASE 6: ACK (Optional - only if not already installed)
+print_step "Phase 6: Checking ACK DynamoDB Controller"
 
-    kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
-    kubectl create secret generic localstack-credentials \
-        -n ack-system \
-        --from-literal=credentials="[default]
+kubectl create secret generic localstack-credentials \
+    -n ack-system \
+    --from-literal=credentials="[default]
 aws_access_key_id = test
 aws_secret_access_key = test" \
-        --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
-    if ! helm list -n ack-system 2>/dev/null | grep -q "ack-dynamodb"; then
-        helm repo add aws-controllers-k8s https://aws-controllers-k8s.github.io/community 2>/dev/null || true
-        helm repo update aws-controllers-k8s 2>/dev/null || print_warning "Failed to update aws-controllers-k8s repo"
+if helm list -n ack-system 2>/dev/null | grep -q "ack-dynamodb"; then
+    print_success "ACK DynamoDB controller already installed"
+else
+    print_info "ACK DynamoDB controller not installed (optional - KRO will still work)"
+    print_info "Attempting to install ACK (with 60 second timeout)..."
 
-        helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
-            -n ack-system --create-namespace \
+    if helm repo add aws-controllers-k8s https://aws-controllers-k8s.github.io/community 2>/dev/null && \
+       helm repo update aws-controllers-k8s 2>/dev/null; then
+        timeout 60 helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
+            -n ack-system \
             --set=aws.region=us-west-2 \
             --set=aws.endpoint_url=http://localstack.localstack-system.svc.cluster.local:4566 \
-            --set=aws.credentials.secretName=localstack-credentials \
-            --wait 2>/dev/null || print_warning "ACK install slow, continuing..."
+            --set=aws.credentials.secretName=localstack-credentials 2>&1 >/dev/null && \
+            print_success "ACK DynamoDB controller installed" || \
+            print_warning "ACK installation timed out or failed (optional - continuing without it)"
+    else
+        print_warning "Could not add ACK Helm repo (optional - continuing without it)"
     fi
-
-    print_success "ACK DynamoDB installed"
 fi
 
 # PHASE 7: Definitions
