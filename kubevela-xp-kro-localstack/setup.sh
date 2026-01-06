@@ -345,25 +345,32 @@ kubectl wait --for=condition=ready pod \
 print_success "Infrastructure ready"
 
 # Deploy sample applications
+print_info "Deploying sample applications..."
+echo ""
+
 if [ -f "$DEMO_ROOT/definitions/examples/session-api-app-kro.yaml" ]; then
     print_info "Deploying KRO-based session API application..."
-    KUBECONFIG="$KUBECONFIG" vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-kro.yaml" 2>/dev/null || print_warning "KRO app deployment initiated"
-    print_success "KRO application deployed"
+    vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-kro.yaml" 2>&1 | grep -v "^$" || print_warning "KRO app deployment may have issues"
+    print_success "KRO application deployment request sent"
 else
     print_warning "KRO application manifest not found at $DEMO_ROOT/definitions/examples/session-api-app-kro.yaml"
 fi
 
+echo ""
+
 if [ -f "$DEMO_ROOT/definitions/examples/session-api-app-xp.yaml" ]; then
     print_info "Deploying Crossplane-based session API application..."
-    KUBECONFIG="$KUBECONFIG" vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-xp.yaml" 2>/dev/null || print_warning "Crossplane app deployment initiated"
-    print_success "Crossplane application deployed"
+    vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-xp.yaml" 2>&1 | grep -v "^$" || print_warning "Crossplane app deployment may have issues"
+    print_success "Crossplane application deployment request sent"
 else
     print_warning "Crossplane application manifest not found at $DEMO_ROOT/definitions/examples/session-api-app-xp.yaml"
 fi
 
+echo ""
+
 # Wait for applications to be deployed
-print_info "Waiting for applications to be deployed..."
-sleep 10
+print_info "Waiting for applications to start (30 seconds)..."
+sleep 30
 
 print_success "Setup complete!"
 echo ""
