@@ -7,22 +7,23 @@ spec:
   components:
     # DynamoDB table for session storage
     - name: sessions-table
-      type: aws-dynamodb-simple-kro
+      type: aws-dynamodb-simple-xp
       properties:
-        tableName: user-sessions
+        tableName: api-sessions
         region: us-west-2
 
     # Session Management API service
     - name: session-api
       type: webservice
       properties:
-        image: localhost:5000/session-api:latest
+        image: session-api:latest
+        imagePullPolicy: IfNotPresent
         ports:
           - port: 8080
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "user-sessions"
+            value: "api-sessions"
           - name: AWS_REGION
             value: "us-west-2"
           - name: LOCALSTACK_ENDPOINT

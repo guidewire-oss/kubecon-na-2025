@@ -69,7 +69,7 @@ template: {
 			name: context.name
 			annotations: {
 				// Crossplane external-name annotation determines the actual AWS table name
-				"crossplane.io/external-name": context.name
+				"crossplane.io/external-name": parameter.tableName
 			}
 		}
 		spec: {
@@ -99,6 +99,9 @@ template: {
 	}
 
 	parameter: {
+		// +usage=The name of the DynamoDB table to create
+		tableName: string
+
 		// +usage=AWS region where the DynamoDB table will be created (e.g., us-east-1, us-west-2)
 		region: *"us-west-2" | string
 
