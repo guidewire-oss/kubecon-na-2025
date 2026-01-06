@@ -91,14 +91,20 @@ fi
 # PHASE 2: LocalStack
 print_step "Phase 2: Installing LocalStack"
 
-kubectl create namespace localstack-system --dry-run=client -o yaml | kubectl apply -f -
+# Create namespace
+kubectl create namespace localstack-system --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
-if kubectl get deployment -n localstack-system -l app.kubernetes.io/name=localstack &>/dev/null 2>&1; then
-    print_info "LocalStack already installed"
+# Check if LocalStack Helm release already exists
+if helm list -n localstack-system 2>/dev/null | grep -q "localstack"; then
+    print_info "LocalStack Helm release already exists"
 else
-    helm repo add localstack https://localstack.github.io/helm-charts --force-update
-    helm repo update localstack
+    print_info "Installing LocalStack Helm chart..."
 
+    # Add and update Helm repo
+    helm repo add localstack https://localstack.github.io/helm-charts --force-update 2>/dev/null || print_warning "Could not add LocalStack Helm repo"
+    helm repo update localstack 2>/dev/null || print_warning "Could not update LocalStack Helm repo"
+
+    # Create LocalStack Helm values
     cat > /tmp/localstack-values.yaml <<'EOF'
 image:
   repository: localstack/localstack
@@ -120,16 +126,14 @@ persistence:
   enabled: false
 EOF
 
+    # Install LocalStack without --wait (will wait in Phase 9)
+    print_info "Deploying LocalStack (may take a moment)..."
     helm install localstack localstack/localstack \
         -n localstack-system \
-        -f /tmp/localstack-values.yaml \
-        --wait --timeout 300s 2>/dev/null || {
-        print_warning "LocalStack install slow, waiting..."
-        sleep 15
-    }
+        -f /tmp/localstack-values.yaml 2>&1 | grep -v "^NAME\|^LAST\|^STATUS\|^CHART\|^APP\|^NAMESPACE" || print_warning "LocalStack Helm install initiated"
 fi
 
-print_success "LocalStack ready"
+print_success "LocalStack configured"
 
 # PHASE 2B: Build and Import Docker Image
 if [ "$SKIP_BUILD" != "true" ]; then
