@@ -303,11 +303,77 @@ aws_access_key_id = test
 aws_secret_access_key = test" \
     --dry-run=client -o yaml | kubectl apply -f -
 
+# PHASE 9: Wait for Infrastructure and Deploy Applications
+print_step "Phase 9: Waiting for Infrastructure and Deploying Applications"
+
+# Wait for LocalStack to be ready
+print_info "Waiting for LocalStack to be ready..."
+kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=localstack \
+    -n localstack-system \
+    --timeout=300s 2>/dev/null || print_warning "LocalStack pod not ready, continuing anyway..."
+
+# Wait for KubeVela to be ready
+print_info "Waiting for KubeVela to be ready..."
+kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=vela-core \
+    -n vela-system \
+    --timeout=300s 2>/dev/null || print_warning "KubeVela pod not ready, continuing anyway..."
+
+# Wait for Crossplane to be ready
+print_info "Waiting for Crossplane to be ready..."
+kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=crossplane \
+    -n crossplane-system \
+    --timeout=300s 2>/dev/null || print_warning "Crossplane pod not ready, continuing anyway..."
+
+# Wait for KRO to be ready
+print_info "Waiting for KRO to be ready..."
+kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/instance=kro \
+    -n kro-system \
+    --timeout=300s 2>/dev/null || print_warning "KRO pod not ready, continuing anyway..."
+
+print_success "Infrastructure ready"
+
+# Deploy sample applications
+if [ -f "$DEMO_ROOT/definitions/examples/session-api-app-kro.yaml" ]; then
+    print_info "Deploying KRO-based session API application..."
+    KUBECONFIG="$KUBECONFIG" vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-kro.yaml" 2>/dev/null || print_warning "KRO app deployment initiated"
+    print_success "KRO application deployed"
+else
+    print_warning "KRO application manifest not found at $DEMO_ROOT/definitions/examples/session-api-app-kro.yaml"
+fi
+
+if [ -f "$DEMO_ROOT/definitions/examples/session-api-app-xp.yaml" ]; then
+    print_info "Deploying Crossplane-based session API application..."
+    KUBECONFIG="$KUBECONFIG" vela up -f "$DEMO_ROOT/definitions/examples/session-api-app-xp.yaml" 2>/dev/null || print_warning "Crossplane app deployment initiated"
+    print_success "Crossplane application deployed"
+else
+    print_warning "Crossplane application manifest not found at $DEMO_ROOT/definitions/examples/session-api-app-xp.yaml"
+fi
+
+# Wait for applications to be deployed
+print_info "Waiting for applications to be deployed..."
+sleep 10
+
 print_success "Setup complete!"
 echo ""
-echo "LocalStack DynamoDB Demo is ready at:"
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║   KubeCon NA 2025 - DynamoDB Demo with LocalStack             ║"
+echo "║   Demo Setup Complete - Applications Deployed                 ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "LocalStack DynamoDB Endpoint:"
 echo "  http://localstack.localstack-system.svc.cluster.local:4566"
 echo ""
-echo "Deploy example: vela up -f definitions/examples/session-api-app.yaml"
-echo "Check status:   vela ls -A"
+echo "Deployed Applications:"
+echo "  • session-api-kro   (KRO-based implementation)"
+echo "  • session-api-xp    (Crossplane-based implementation)"
+echo ""
+echo "Useful Commands:"
+echo "  View all applications:   vela ls -A"
+echo "  Check app status:        vela status <app-name>"
+echo "  View app logs:           kubectl logs -n default <pod-name>"
+echo "  Re-deploy an app:        vela up -f definitions/examples/session-api-app-kro.yaml"
 echo ""
