@@ -286,18 +286,32 @@ else
 fi
 
 # PHASE 7: Definitions
-print_step "Phase 7: Deploying Definitions"
+print_step "Phase 7: Deploying Component Definitions"
+
+# Deploy KRO ResourceGraphDefinition FIRST (before VeLa components that use it)
+print_info "Deploying KRO ResourceGraphDefinition..."
+[ -f "$DEMO_ROOT/definitions/kro/simple-dynamodb-rgd.yaml" ] && \
+    kubectl apply -f "$DEMO_ROOT/definitions/kro/simple-dynamodb-rgd.yaml" 2>/dev/null && \
+    print_success "KRO ResourceGraphDefinition deployed" || \
+    print_warning "Could not deploy KRO ResourceGraphDefinition"
+
+# Give KRO time to register the custom resource definition
+sleep 5
+
+# Deploy VeLa component definitions
+print_info "Deploying VeLa component definitions..."
 
 [ -f "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-xp.cue" ] && \
-    vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-xp.cue" 2>/dev/null || true
+    vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-xp.cue" 2>/dev/null && \
+    print_success "Crossplane DynamoDB component deployed" || \
+    print_warning "Could not deploy Crossplane component"
 
 [ -f "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-kro.cue" ] && \
-    vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-kro.cue" 2>/dev/null || true
+    vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-kro.cue" 2>/dev/null && \
+    print_success "KRO DynamoDB component deployed" || \
+    print_warning "Could not deploy KRO component"
 
-[ -f "$DEMO_ROOT/definitions/kro/simple-dynamodb-rgd.yaml" ] && \
-    kubectl apply -f "$DEMO_ROOT/definitions/kro/simple-dynamodb-rgd.yaml" 2>/dev/null || true
-
-print_success "Definitions deployed"
+print_success "All definitions deployed"
 
 # PHASE 8: Finalize
 print_step "Phase 8: Finalizing"
@@ -341,6 +355,13 @@ kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/instance=kro \
     -n kro-system \
     --timeout=300s 2>/dev/null || print_warning "KRO pod not ready, continuing anyway..."
+
+# Wait for ACK to be ready (if installed)
+print_info "Waiting for ACK DynamoDB controller..."
+kubectl wait --for=condition=ready pod \
+    -l app=ack-dynamodb-controller \
+    -n ack-system \
+    --timeout=60s 2>/dev/null || print_info "ACK not available (optional - KRO tables may use alternative method)"
 
 print_success "Infrastructure ready"
 
