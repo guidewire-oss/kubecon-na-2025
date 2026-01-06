@@ -264,7 +264,7 @@ aws_secret_access_key = test" \
 
     if ! helm list -n ack-system 2>/dev/null | grep -q "ack-dynamodb"; then
         helm repo add aws-controllers-k8s https://aws-controllers-k8s.github.io/community 2>/dev/null || true
-        helm repo update aws-controllers-k8s
+        helm repo update aws-controllers-k8s 2>/dev/null || print_warning "Failed to update aws-controllers-k8s repo"
 
         helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
             -n ack-system --create-namespace \
