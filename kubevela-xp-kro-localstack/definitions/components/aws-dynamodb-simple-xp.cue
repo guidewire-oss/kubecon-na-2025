@@ -92,6 +92,7 @@ template: {
 				billingMode: "PAY_PER_REQUEST"
 			}
 
+			// Reference the Crossplane AWS provider config for LocalStack
 			providerConfigRef: {
 				name: *parameter.providerConfigRef | "default"
 			}

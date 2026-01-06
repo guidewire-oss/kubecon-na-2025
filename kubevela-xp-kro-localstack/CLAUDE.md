@@ -113,6 +113,27 @@ The script uses two methods:
 1. **kubectl exec** - Direct access via LocalStack pod (works in any environment)
 2. **Port-forward** - Localhost access for host machines (if AWS CLI installed)
 
+## Debugging Tables Not Being Created
+
+If `./check-dynamodb-tables.sh` shows no tables despite successful setup, use the debugging tools:
+
+### Quick Diagnostics
+```bash
+# See full resource state and controller logs
+./debug-resources.sh
+
+# Manually test table creation (isolates KRO vs Crossplane)
+./test-manual-table-creation.sh
+```
+
+### Detailed Debugging Guide
+See `DEBUGGING.md` for a complete troubleshooting workflow including:
+- Decision tree for identifying which component is failing
+- Common issues and fixes
+- Manual testing steps
+- Real-time log viewing
+- Useful kubectl commands
+
 ## Available Examples
 
 ### Complete Applications (Table + Webservice)
@@ -151,6 +172,17 @@ echo "Image Registry: $IMAGE_REGISTRY"
 echo "LocalStack Endpoint: $LOCALSTACK_ENDPOINT"
 echo "Kubeconfig: $KUBECONFIG"
 ```
+
+### KRO + ACK Setup Issues (Fixed)
+
+The KRO + ACK integration required several fixes:
+
+1. **RBAC Permissions** - Applied `kro:controller:dynamic-resources` ClusterRole to allow KRO to manage SimpleDynamoDB resources
+2. **ACK CRD Installation** - Installed `dynamodb.services.k8s.aws/v1alpha1/Table` CRD from GitHub (image pull issues prevented Helm installation)
+3. **RGD Configuration** - Created proper ResourceGraphDefinition with correct status field mapping
+4. **SimpleDynamoDB CRD** - Created the custom resource definition to bridge KRO and ACK
+
+These are automatically applied by `./setup.sh` - no manual intervention needed.
 
 ### DevContainer-Specific
 
@@ -200,6 +232,8 @@ echo "Kubeconfig: $KUBECONFIG"
 ├── setup.sh                          # Full setup automation
 ├── clean.sh                          # Cleanup script (deletes cluster and all resources)
 ├── check-dynamodb-tables.sh          # Check DynamoDB tables in LocalStack
+├── debug-resources.sh                # Full diagnostic: shows all resources and controller logs
+├── test-manual-table-creation.sh     # Manual test: isolates KRO vs Crossplane issues
 ├── kubeconfig-internal               # Generated kubeconfig for DevContainer
 ├── localstack-values.yaml            # LocalStack Helm values
 ├── definitions/
@@ -226,7 +260,9 @@ echo "Kubeconfig: $KUBECONFIG"
 │   ├── test_localstack.sh           # Comprehensive LocalStack test (with env detection)
 │   └── test_kro_integration.sh      # KRO integration test
 ├── README.md                        # Project overview
-└── CLAUDE.md                        # This file
+├── CLAUDE.md                        # Developer guide (this file)
+├── DEBUGGING.md                     # Troubleshooting guide for table creation issues
+└── install-ack.sh                   # Manual ACK DynamoDB installation (if Phase 6 fails)
 ```
 
 ## Testing
