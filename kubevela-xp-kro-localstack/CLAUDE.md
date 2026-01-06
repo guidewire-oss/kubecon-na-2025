@@ -52,7 +52,8 @@ cp .env.host .env
 ### Installation Phases
 
 Phase 0: Environment detection and configuration
-Phase 1: LocalStack installation (http://localstack.localstack-system.svc.cluster.local:4566)
+Phase 1: Cluster creation (if needed)
+Phase 2: LocalStack installation (http://localstack.localstack-system.svc.cluster.local:4566)
 Phase 2B: Docker image build and import
 Phase 3: KubeVela installation
 Phase 4: Crossplane installation
@@ -60,23 +61,25 @@ Phase 5: KRO installation
 Phase 6: ACK DynamoDB installation
 Phase 7: Deploy component definitions
 Phase 8: Finalize and verify
+Phase 9: Wait for infrastructure and deploy applications (automatic)
 
 ## Working with Applications
 
-### Deploy Application
+### Applications Are Auto-Deployed!
 
-Deploy both for side-by-side comparison:
+**Both KRO and Crossplane applications are automatically deployed during Phase 9 of setup.sh**
+
+After running `./setup.sh`, both applications are ready to use:
+- `session-api-app-kro` - KRO-based DynamoDB with session API
+- `session-api-app-xp` - Crossplane-based DynamoDB with session API
+
+To re-deploy an application manually:
 ```bash
 # Deploy KRO-based session API
 KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
 
-# Deploy Crossplane-based session API (separate cluster)
+# Deploy Crossplane-based session API
 KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-xp.yaml
-```
-
-Or deploy just one:
-```bash
-KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
 ```
 
 ### Check Status
