@@ -94,6 +94,25 @@ KUBECONFIG=./kubeconfig-internal kubectl get pods -n default   # Pods
 KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name>
 ```
 
+### Check DynamoDB Tables in LocalStack
+
+Use the helper script to check if DynamoDB tables have been created:
+
+```bash
+# Run on host machine (auto-detects your environment)
+./check-dynamodb-tables.sh
+```
+
+This script will:
+- ✓ List all DynamoDB tables created in LocalStack
+- ✓ Show application deployment status
+- ✓ Provide helpful debugging commands
+- ✓ Test LocalStack connectivity
+
+The script uses two methods:
+1. **kubectl exec** - Direct access via LocalStack pod (works in any environment)
+2. **Port-forward** - Localhost access for host machines (if AWS CLI installed)
+
 ## Available Examples
 
 ### Complete Applications (Table + Webservice)
@@ -180,6 +199,7 @@ echo "Kubeconfig: $KUBECONFIG"
 ├── create-kubeconfig.sh              # Kubeconfig generator (run after cluster restart)
 ├── setup.sh                          # Full setup automation
 ├── clean.sh                          # Cleanup script (deletes cluster and all resources)
+├── check-dynamodb-tables.sh          # Check DynamoDB tables in LocalStack
 ├── kubeconfig-internal               # Generated kubeconfig for DevContainer
 ├── localstack-values.yaml            # LocalStack Helm values
 ├── definitions/
