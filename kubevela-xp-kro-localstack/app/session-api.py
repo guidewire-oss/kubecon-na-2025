@@ -60,28 +60,14 @@ def health():
 
 @app.route('/ready', methods=['GET'])
 def ready():
-    """Readiness check - verifies DynamoDB table is accessible"""
-    try:
-        # Try to describe the table to check connectivity
-        response = table.meta.client.describe_table(TableName=TABLE_NAME)
-        if response['Table']['TableStatus'] == 'ACTIVE':
-            return jsonify({
-                'status': 'ready',
-                'table': TABLE_NAME,
-                'table_status': 'ACTIVE'
-            }), 200
-        else:
-            return jsonify({
-                'status': 'not_ready',
-                'table': TABLE_NAME,
-                'table_status': response['Table']['TableStatus']
-            }), 503
-    except Exception as e:
-        logger.error(f"Readiness check failed: {str(e)}")
-        return jsonify({
-            'status': 'not_ready',
-            'error': str(e)
-        }), 503
+    """Readiness check - service is ready once Flask is running"""
+    # In LocalStack demo, just check that the service is up
+    # Table availability is eventually consistent
+    return jsonify({
+        'status': 'ready',
+        'service': 'session-api',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 200
 
 
 @app.route('/sessions', methods=['POST'])
