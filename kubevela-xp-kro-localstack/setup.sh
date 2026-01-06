@@ -212,12 +212,40 @@ aws_access_key_id = test
 aws_secret_access_key = test" \
         --dry-run=client -o yaml | kubectl apply -f -
 
-    # ProviderConfig
+    # ProviderConfig for Crossplane to use LocalStack
+    print_info "Configuring Crossplane ProviderConfig for LocalStack..."
+    kubectl apply -f - <<'EOF' || print_warning "Could not apply ProviderConfig"
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack-credentials
+      key: credentials
+  endpoint:
+    url:
+      type: Static
+      static: "http://localstack.localstack-system.svc.cluster.local:4566"
+    hostnameImmutable: true
+  skip_credentials_validation: true
+  skip_requesting_account_id: true
+  skip_metadata_api_check: true
+  s3_use_path_style: true
+EOF
+
+    print_success "Crossplane ProviderConfig configured"
+
+    # Also ensure default ProviderConfig in default namespace for safety
     kubectl apply -f - <<'EOF' || true
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
+  namespace: default
 spec:
   credentials:
     source: Secret
