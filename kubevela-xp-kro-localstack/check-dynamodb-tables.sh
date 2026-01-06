@@ -40,7 +40,10 @@ echo ""
 
 # Source environment detection
 if [ -f "$DEMO_ROOT/config/detect-env.sh" ]; then
+    # Import environment detection functions
+    set -a
     source "$DEMO_ROOT/config/detect-env.sh"
+    set +a
 else
     print_error "Could not find config/detect-env.sh"
     exit 1
@@ -48,16 +51,18 @@ fi
 
 # Source port-forward helpers
 if [ -f "$DEMO_ROOT/config/port-forward-helpers.sh" ]; then
+    # Import port-forward functions
+    set -a
     source "$DEMO_ROOT/config/port-forward-helpers.sh"
+    set +a
 else
     print_error "Could not find config/port-forward-helpers.sh"
     exit 1
 fi
 
-# Get kubeconfig
-KUBECONFIG=$(get_kubeconfig)
+# Get kubeconfig - use the KUBECONFIG variable that was set by detect-env.sh
 if [ -z "$KUBECONFIG" ]; then
-    print_error "Could not find kubeconfig"
+    print_error "KUBECONFIG not set"
     exit 1
 fi
 
@@ -67,9 +72,22 @@ print_info "LocalStack Endpoint: $LOCALSTACK_ENDPOINT"
 echo ""
 
 # Verify kubeconfig is valid
+print_info "Verifying cluster connection..."
 if ! kubectl --kubeconfig="$KUBECONFIG" cluster-info &>/dev/null; then
-    print_error "Kubeconfig is not valid or cluster not accessible"
-    exit 1
+    print_warning "Could not connect to cluster with KUBECONFIG=$KUBECONFIG"
+    print_info "Trying to find k3d kubeconfig from cluster..."
+
+    # Try to get kubeconfig from k3d if available
+    if command -v k3d &> /dev/null && k3d cluster list 2>/dev/null | grep -q kubevela-demo; then
+        print_info "Found k3d cluster, getting kubeconfig..."
+        KUBECONFIG=$(k3d kubeconfig get kubevela-demo 2>/dev/null | mktemp --suffix=.yaml -u)
+        k3d kubeconfig get kubevela-demo > "$KUBECONFIG" 2>/dev/null
+        export KUBECONFIG
+        print_success "Updated KUBECONFIG from k3d"
+    else
+        print_error "Could not find valid kubeconfig or k3d cluster"
+        exit 1
+    fi
 fi
 
 print_success "Kubernetes cluster accessible"
