@@ -39,11 +39,27 @@ SKIP_INSTALL=false
 for arg in "$@"; do
     case $arg in
         --skip-install) SKIP_INSTALL=true ;;
-        -h|--help) echo "Usage: ./setup.sh [--skip-install]"; exit 0 ;;
+        -h|--help) echo "Usage: ./setup.sh [--skip-install] [--skip-build]"; exit 0 ;;
+        --skip-build) SKIP_BUILD=true ;;
     esac
 done
 
 DEMO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ============================================================================
+# PHASE 0: Environment Detection and Configuration
+# ============================================================================
+print_step "Phase 0: Detecting Environment and Loading Configuration"
+
+# Source environment detection
+source "${DEMO_ROOT}/config/detect-env.sh"
+
+# Source port-forward helpers
+source "${DEMO_ROOT}/config/port-forward-helpers.sh"
+
+print_success "Environment: $ENV_TYPE"
+print_success "Image Registry: $IMAGE_REGISTRY"
+print_success "Kubeconfig: $KUBECONFIG"
 
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║   KubeCon NA 2025 - DynamoDB Demo with LocalStack             ║"
@@ -93,6 +109,35 @@ EOF
 fi
 
 print_success "LocalStack ready"
+
+# PHASE 2B: Build and Import Docker Image
+if [ "$SKIP_BUILD" != "true" ]; then
+    print_step "Phase 2B: Building and Importing Session API Docker Image"
+
+    cd "${DEMO_ROOT}/app"
+
+    print_info "Building Docker image: session-api:latest"
+    DOCKER_BUILDKIT=0 docker build -t session-api:latest . || {
+        print_error "Docker build failed"
+        exit 1
+    }
+
+    if [ "$ENV_TYPE" = "host" ]; then
+        print_info "Importing image to k3d cluster..."
+        if command -v k3d &> /dev/null; then
+            k3d image import session-api:latest -c kubevela-demo || print_warning "k3d image import may have failed"
+        else
+            print_warning "k3d not found, image must be available via registry"
+        fi
+    elif [ "$ENV_TYPE" = "devcontainer" ]; then
+        print_info "DevContainer: image available in local k3d registry"
+    else
+        print_info "Environment: $ENV_TYPE, assuming image in registry"
+    fi
+
+    cd "${DEMO_ROOT}"
+    print_success "Docker image ready"
+fi
 
 # PHASE 3: KubeVela
 if [ "$SKIP_INSTALL" = false ]; then
