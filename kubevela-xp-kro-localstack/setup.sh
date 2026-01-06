@@ -57,6 +57,9 @@ source "${DEMO_ROOT}/config/detect-env.sh"
 # Source port-forward helpers
 source "${DEMO_ROOT}/config/port-forward-helpers.sh"
 
+# Export KUBECONFIG for all kubectl commands
+export KUBECONFIG
+
 print_success "Environment: $ENV_TYPE"
 print_success "Image Registry: $IMAGE_REGISTRY"
 print_success "Kubeconfig: $KUBECONFIG"
