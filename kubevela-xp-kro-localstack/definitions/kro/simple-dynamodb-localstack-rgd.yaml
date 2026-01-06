@@ -13,7 +13,7 @@ spec:
       tableState: string
 
   resources:
-    - id: dynamodb-table
+    - id: dynamodbTable
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -35,7 +35,7 @@ spec:
               --endpoint-url http://localstack.localstack-system.svc.cluster.local:4566 \
               --region ${schema.spec.region}
 
-    - id: table-creator-job
+    - id: tableCreatorJob
       template:
         apiVersion: batch/v1
         kind: Job

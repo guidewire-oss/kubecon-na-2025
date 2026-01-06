@@ -23,17 +23,37 @@ Automatically sets up k3d cluster, KubeVela, Crossplane, KRO, ACK, and LocalStac
 
 ### 2. Deploy Example App
 ```bash
-KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/simple-session-app-kro.yaml
+KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
 ```
-Creates a DynamoDB table + Flask session API (KRO version). Use `simple-session-app-xp.yaml` for Crossplane.
+Creates a DynamoDB table + Flask session API (KRO version). Use `session-api-app-xp.yaml` for Crossplane.
 
 ### 3. Check Status
 ```bash
-KUBECONFIG=./kubeconfig-internal vela ls
-KUBECONFIG=./kubeconfig-internal kubectl logs -n default <pod-name>
+./check-dynamodb-tables.sh
 ```
 
 That's it! Your table is running in LocalStack. No AWS account needed.
+
+## Troubleshooting Tables Not Created
+
+If `./check-dynamodb-tables.sh` shows no tables despite successful setup:
+
+### Quick Debugging (5 minutes)
+```bash
+# See complete system state and what's broken
+./debug-resources.sh
+
+# Test table creation manually
+./test-manual-table-creation.sh
+```
+
+### Full Debugging Guide
+See **`DEBUGGING.md`** for:
+- 3-step debugging workflow
+- Decision tree to identify issue
+- Quick fixes for common scenarios
+- Complete troubleshooting reference with all commands and logs
+- System architecture and data flow in `ARCHITECTURE.md`
 
 ## Key Differences vs AWS Demo
 
