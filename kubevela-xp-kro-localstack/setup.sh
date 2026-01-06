@@ -67,6 +67,24 @@ echo "║   (NO AWS account required)                                   ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
+# PHASE 1: Ensure k3d cluster exists (for host machine)
+if [ "$ENV_TYPE" = "host" ]; then
+    print_step "Phase 1: Ensuring k3d Cluster Exists"
+
+    if ! k3d cluster list | grep -q "kubevela-demo"; then
+        print_info "Creating k3d cluster: kubevela-demo"
+        k3d cluster create kubevela-demo --agents 2 || {
+            print_error "Failed to create k3d cluster"
+            exit 1
+        }
+        print_success "k3d cluster created"
+    else
+        print_info "k3d cluster 'kubevela-demo' already exists"
+    fi
+else
+    print_step "Phase 1: Skipping Cluster Creation (not host environment)"
+fi
+
 # PHASE 2: LocalStack
 print_step "Phase 2: Installing LocalStack"
 
