@@ -147,10 +147,16 @@ setup_host_config() {
         fi
     fi
 
+    # Use standard kubeconfig location on host
+    local kubeconfig_host="${HOME}/.kube/config"
+    if [ ! -f "$kubeconfig_host" ]; then
+        kubeconfig_host="${DEMO_ROOT}/kubeconfig-host"
+    fi
+
     export IMAGE_NAME="session-api:latest"
     export IMAGE_REGISTRY="localhost:${k3d_registry_port}"
     export LOCALSTACK_ENDPOINT="http://localhost:4566"
-    export KUBECONFIG_PATH="${DEMO_ROOT}/kubeconfig-host"
+    export KUBECONFIG_PATH="$kubeconfig_host"
     export KUBECONFIG="${KUBECONFIG_PATH}"
     export VELA_NAMESPACE="default"
     export TEST_ENDPOINT_MODE="portforward"
