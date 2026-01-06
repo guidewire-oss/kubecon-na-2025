@@ -214,11 +214,25 @@ aws_secret_access_key = test" \
 
     # ProviderConfig for Crossplane to use LocalStack
     print_info "Configuring Crossplane ProviderConfig for LocalStack..."
-    kubectl apply -f - <<'EOF' || print_warning "Could not apply ProviderConfig"
+
+    # Determine endpoint based on environment
+    if [ "$ENV_TYPE" = "host" ]; then
+        # On host machine: use localhost with port-forward
+        CROSSPLANE_ENDPOINT="http://localhost:4566"
+        print_info "Using host machine endpoint: $CROSSPLANE_ENDPOINT"
+    else
+        # In cluster (DevContainer, CI/CD): use in-cluster DNS
+        CROSSPLANE_ENDPOINT="http://localstack.localstack-system.svc.cluster.local:4566"
+        print_info "Using in-cluster endpoint: $CROSSPLANE_ENDPOINT"
+    fi
+
+    # Create ProviderConfig in crossplane-system namespace
+    kubectl apply -f - <<EOF || print_warning "Could not apply ProviderConfig"
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
+  namespace: crossplane-system
 spec:
   credentials:
     source: Secret
@@ -229,7 +243,7 @@ spec:
   endpoint:
     url:
       type: Static
-      static: "http://localstack.localstack-system.svc.cluster.local:4566"
+      static: "$CROSSPLANE_ENDPOINT"
     hostnameImmutable: true
   skip_credentials_validation: true
   skip_requesting_account_id: true
@@ -237,10 +251,10 @@ spec:
   s3_use_path_style: true
 EOF
 
-    print_success "Crossplane ProviderConfig configured"
+    print_success "Crossplane ProviderConfig configured (namespace: crossplane-system)"
 
     # Also ensure default ProviderConfig in default namespace for safety
-    kubectl apply -f - <<'EOF' || true
+    kubectl apply -f - <<EOF || true
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
@@ -256,7 +270,7 @@ spec:
   endpoint:
     url:
       type: Static
-      static: "http://localstack.localstack-system.svc.cluster.local:4566"
+      static: "$CROSSPLANE_ENDPOINT"
     hostnameImmutable: true
   skip_credentials_validation: true
   skip_requesting_account_id: true
@@ -264,7 +278,15 @@ spec:
   s3_use_path_style: true
 EOF
 
-    print_success "Crossplane configured"
+    print_success "Crossplane ProviderConfig configured (namespace: default)"
+
+    # Setup port-forward on host machine for Crossplane to reach LocalStack
+    if [ "$ENV_TYPE" = "host" ]; then
+        print_info "Setting up port-forward for LocalStack (host machine)..."
+        kubectl port-forward -n localstack-system svc/localstack 4566:4566 > /dev/null 2>&1 &
+        PORT_FORWARD_PID=$!
+        print_success "Port-forward started (PID: $PORT_FORWARD_PID)"
+    fi
 fi
 
 # PHASE 5: KRO
@@ -282,10 +304,11 @@ if [ "$SKIP_INSTALL" = false ]; then
 fi
 
 # PHASE 6: ACK (Optional - only if not already installed)
-print_step "Phase 6: Checking ACK DynamoDB Controller"
+print_step "Phase 6: Installing ACK DynamoDB Controller"
 
 kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
+# Create LocalStack credentials
 kubectl create secret generic localstack-credentials \
     -n ack-system \
     --from-literal=credentials="[default]
@@ -293,23 +316,92 @@ aws_access_key_id = test
 aws_secret_access_key = test" \
     --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
-if helm list -n ack-system 2>/dev/null | grep -q "ack-dynamodb"; then
+# Check if ACK is already deployed
+if kubectl get deployment -n ack-system ack-dynamodb-controller &>/dev/null; then
     print_success "ACK DynamoDB controller already installed"
 else
-    print_info "ACK DynamoDB controller not installed (optional - KRO will still work)"
-    print_info "Attempting to install ACK (with 60 second timeout)..."
+    print_info "Installing ACK DynamoDB controller directly from ECR (more reliable)..."
 
-    if helm repo add aws-controllers-k8s https://aws-controllers-k8s.github.io/community 2>/dev/null && \
-       helm repo update aws-controllers-k8s 2>/dev/null; then
-        timeout 60 helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
-            -n ack-system \
-            --set=aws.region=us-west-2 \
-            --set=aws.endpoint_url=http://localstack.localstack-system.svc.cluster.local:4566 \
-            --set=aws.credentials.secretName=localstack-credentials 2>&1 >/dev/null && \
-            print_success "ACK DynamoDB controller installed" || \
-            print_warning "ACK installation timed out or failed (optional - continuing without it)"
+    # Install ACK RBAC and deployment directly (doesn't require Helm)
+    kubectl apply -f - <<'ACKEOF'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ack-dynamodb
+  namespace: ack-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ack-dynamodb
+rules:
+- apiGroups: ["dynamodb.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ack-dynamodb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ack-dynamodb
+subjects:
+- kind: ServiceAccount
+  name: ack-dynamodb
+  namespace: ack-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ack-dynamodb-controller
+  namespace: ack-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ack-dynamodb-controller
+  template:
+    metadata:
+      labels:
+        app: ack-dynamodb-controller
+    spec:
+      serviceAccountName: ack-dynamodb
+      containers:
+      - name: controller
+        image: public.ecr.aws/aws-controllers-k8s/dynamodb-controller:v1.4.0
+        imagePullPolicy: Always
+        env:
+        - name: AWS_REGION
+          value: us-west-2
+        - name: AWS_ENDPOINT_URL
+          value: http://localstack.localstack-system.svc.cluster.local:4566
+        - name: AWS_ACCESS_KEY_ID
+          value: test
+        - name: AWS_SECRET_ACCESS_KEY
+          value: test
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+ACKEOF
+
+    # Wait for ACK controller to be ready
+    print_info "Waiting for ACK controller to be ready (60 seconds)..."
+    if kubectl wait --for=condition=ready pod -l app=ack-dynamodb-controller -n ack-system --timeout=60s 2>/dev/null; then
+        print_success "ACK DynamoDB controller installed and ready"
     else
-        print_warning "Could not add ACK Helm repo (optional - continuing without it)"
+        print_warning "ACK controller deployment initiated (may still be starting)"
     fi
 fi
 
@@ -392,6 +484,60 @@ kubectl wait --for=condition=ready pod \
     --timeout=60s 2>/dev/null || print_info "ACK not available (optional - KRO tables may use alternative method)"
 
 print_success "Infrastructure ready"
+
+# Initialize DynamoDB tables in LocalStack
+print_step "Phase 10: Initializing DynamoDB Tables"
+print_info "Creating DynamoDB tables in LocalStack..."
+
+kubectl apply -f - << 'EOF'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-dynamodb-tables
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 2
+  template:
+    spec:
+      containers:
+      - name: create
+        image: amazon/aws-cli:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: "test"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "test"
+        - name: AWS_DEFAULT_REGION
+          value: "us-west-2"
+        - name: ENDPOINT_URL
+          value: "http://localstack.localstack-system.svc.cluster.local:4566"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Creating api-sessions-kro table..."
+          aws dynamodb create-table --table-name api-sessions-kro --attribute-definitions AttributeName=id,AttributeType=S --key-schema AttributeName=id,KeyType=HASH --billing-mode PAY_PER_REQUEST --endpoint-url $ENDPOINT_URL --region us-west-2 || true
+          echo "Creating api-sessions-xp table..."
+          aws dynamodb create-table --table-name api-sessions-xp --attribute-definitions AttributeName=id,AttributeType=S --key-schema AttributeName=id,KeyType=HASH --billing-mode PAY_PER_REQUEST --endpoint-url $ENDPOINT_URL --region us-west-2 || true
+          echo "Listing tables..."
+          aws dynamodb list-tables --endpoint-url $ENDPOINT_URL --region us-west-2
+      restartPolicy: Never
+EOF
+
+print_info "Waiting for table creation..."
+sleep 15
+if kubectl get job init-dynamodb-tables &>/dev/null; then
+    COMPLETIONS=$(kubectl get job init-dynamodb-tables -o jsonpath='{.status.succeeded}')
+    if [ "$COMPLETIONS" = "1" ]; then
+        print_success "DynamoDB tables created successfully"
+    else
+        print_warning "Table creation job still running or had issues"
+    fi
+fi
+
+echo ""
 
 # Deploy sample applications
 print_info "Deploying sample applications..."
