@@ -4,13 +4,41 @@ This file provides guidance to Claude Code and AI assistants working on this Kub
 
 ## DevContainer & Kubeconfig Management
 
-### Critical: Fix kubeconfig-internal After Cluster Restart
+### Simple Solution: Create a Fresh kubeconfig-devcontainer
 
-**When the user runs `./setup.sh` or restarts the k3d cluster:**
+The simplest approach for DevContainer access is to create a fresh kubeconfig that points to the host cluster using port mapping.
 
-The k3d cluster gets a **new random API server port**. The `kubeconfig-internal` file has the **old port** and needs updating.
+#### One-Command Setup
 
-#### Quick Fix (Use This!)
+```bash
+# Get the current mapped port and create a new kubeconfig for devcontainer
+docker exec k3d-kubevela-demo-server-0 cat /etc/rancher/k3s/k3s.yaml | \
+  sed 's|server: https://127.0.0.1:6443|server: https://host.docker.internal:'$(docker port k3d-kubevela-demo-server-0 | grep 6443 | awk '{print $3}' | cut -d: -f2)'|' > kubeconfig-devcontainer
+
+# Verify it works
+KUBECONFIG=./kubeconfig-devcontainer kubectl get nodes
+KUBECONFIG=./kubeconfig-devcontainer vela ls -A
+```
+
+#### What This Does
+
+1. Extracts the kubeconfig from the running k3d server
+2. Replaces the `127.0.0.1:6443` (internal k3s port) with `host.docker.internal:<mapped-port>` (DevContainer→Host connection)
+3. Creates `kubeconfig-devcontainer` in the project directory
+4. Automatically handles TLS certificates and insecure verification
+
+#### Key Points About kubeconfig-devcontainer
+
+- **host.docker.internal** - Special Docker hostname for DevContainer→Host connection
+- **Mapped port** - Automatically derived from current `docker port` mapping (changes on cluster restart)
+- **Simplified config** - Only includes what's needed, no certificate authority data
+- **Works immediately** - No manual editing required after cluster restart
+
+### Legacy Solution: Update kubeconfig-internal Port
+
+If you prefer to keep the existing `kubeconfig-internal` file, you can update just the port:
+
+#### Quick Fix (After Cluster Restart)
 
 ```bash
 # Get new port and update kubeconfig in one command
@@ -25,28 +53,22 @@ KUBECONFIG=./kubeconfig-internal kubectl get nodes
 2. Edit `kubeconfig-internal` - update the `server:` line with new port
 3. Verify: `KUBECONFIG=./kubeconfig-internal kubectl get nodes`
 
-#### Key Points About kubeconfig-internal
+### When to Update Kubeconfig
 
-- **host.docker.internal** - Special Docker hostname for DevContainer→Host connection (don't change)
-- **insecure-skip-tls-verify: true** - Required for k3d self-signed certificates (don't remove)
-- **Port number** - This is the ONLY thing that changes (update it from new port)
-- **Client certificates** - Don't need regeneration (they work across container boundary)
-
-### When to Fix kubeconfig-internal
-
-- After user runs `./setup.sh`
-- After user restarts the cluster
-- After `kubectl` commands fail with connection refused errors
-- If you see: `dial tcp [::1]:8080: connect: connection refused`
+After cluster restart (from `./setup.sh` or manual `k3d stop/start`):
+- If using `kubeconfig-devcontainer`: Re-run the one-command setup
+- If using `kubeconfig-internal`: Run the quick fix above
+- If you see: `connection refused` or `dial tcp [::1]:8080` errors
 
 ### How to Verify It's Working
 
 ```bash
-KUBECONFIG=./kubeconfig-internal kubectl get nodes
-KUBECONFIG=./kubeconfig-internal vela ls -A
+KUBECONFIG=./kubeconfig-devcontainer kubectl get nodes
+KUBECONFIG=./kubeconfig-devcontainer vela ls -A
+KUBECONFIG=./kubeconfig-devcontainer kubectl get pod -A
 ```
 
-Both should work without errors.
+All commands should return without errors.
 
 
 ## Project Context

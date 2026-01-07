@@ -40,14 +40,15 @@ spec:
       # Features
       streamEnabled: "boolean | default=false"
       streamViewType: string
-      pointInTimeRecoveryEnabled: "boolean | default=false"
       sseEnabled: "boolean | default=false"
       sseType: string
       kmsMasterKeyID: string
-      ttlEnabled: "boolean | default=false"
-      ttlAttributeName: string
       deletionProtectionEnabled: "boolean | default=false"
       tableClass: string
+
+      # Note: pointInTimeRecoveryEnabled and ttlEnabled/ttlAttributeName are not supported
+      # These require nested specifications that ACK doesn't expose in its simple Table schema
+      # For TTL and PITR support, use ACK Table directly or manage via AWS API
 
       # Tags
       tags: "[]Tag"
@@ -75,19 +76,3 @@ spec:
           billingMode: ${schema.spec.billingMode}
           attributeDefinitions: ${schema.spec.attributeDefinitions}
           keySchema: ${schema.spec.keySchema}
-          provisionedThroughput: ${schema.spec.provisionedThroughput}
-          streamSpecification:
-            streamEnabled: ${schema.spec.streamEnabled}
-            streamViewType: ${schema.spec.streamViewType}
-          pointInTimeRecoverySpecification:
-            pointInTimeRecoveryEnabled: ${schema.spec.pointInTimeRecoveryEnabled}
-          sseSpecification:
-            enabled: ${schema.spec.sseEnabled}
-            sseType: ${schema.spec.sseType}
-            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
-          timeToLiveSpecification:
-            enabled: ${schema.spec.ttlEnabled}
-            attributeName: ${schema.spec.ttlAttributeName}
-          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}
-          tableClass: ${schema.spec.tableClass}
-          tags: ${schema.spec.tags}

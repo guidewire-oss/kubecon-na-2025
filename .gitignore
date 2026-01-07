@@ -40,3 +40,8 @@ terraform.tfstate.backup
 
 k3d-registry.localhost:5000
 localhost:5000
+
+# Kubeconfig files (contain private keys and should not be committed)
+kubeconfig*
+kubeconfig-*
+.kubeconfig
