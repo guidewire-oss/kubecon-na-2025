@@ -207,9 +207,8 @@ EOF
 
     kubectl create secret generic localstack-credentials \
         -n crossplane-system \
-        --from-literal=credentials="[default]
-aws_access_key_id = test
-aws_secret_access_key = test" \
+        --from-literal=aws_access_key_id="test" \
+        --from-literal=aws_secret_access_key="test" \
         --dry-run=client -o yaml | kubectl apply -f -
 
     # ProviderConfig for Crossplane to use LocalStack
@@ -286,6 +285,15 @@ EOF
         kubectl port-forward -n localstack-system svc/localstack 4566:4566 > /dev/null 2>&1 &
         PORT_FORWARD_PID=$!
         print_success "Port-forward started (PID: $PORT_FORWARD_PID)"
+
+        # Add cleanup handler to terminate port-forward on script exit
+        cleanup_setup_port_forward() {
+            if [ -n "$PORT_FORWARD_PID" ] && ps -p "$PORT_FORWARD_PID" > /dev/null 2>&1; then
+                print_info "Cleaning up port-forward (PID: $PORT_FORWARD_PID)..."
+                kill "$PORT_FORWARD_PID" 2>/dev/null || true
+            fi
+        }
+        trap cleanup_setup_port_forward EXIT INT TERM
     fi
 fi
 
@@ -311,9 +319,8 @@ kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f 
 # Create LocalStack credentials
 kubectl create secret generic localstack-credentials \
     -n ack-system \
-    --from-literal=credentials="[default]
-aws_access_key_id = test
-aws_secret_access_key = test" \
+    --from-literal=aws_access_key_id="test" \
+    --from-literal=aws_secret_access_key="test" \
     --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
 # Check if ACK is already deployed
@@ -440,9 +447,8 @@ kubectl create namespace default --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic localstack-credentials \
     -n default \
-    --from-literal=credentials="[default]
-aws_access_key_id = test
-aws_secret_access_key = test" \
+    --from-literal=aws_access_key_id="test" \
+    --from-literal=aws_secret_access_key="test" \
     --dry-run=client -o yaml | kubectl apply -f -
 
 # PHASE 9: Wait for Infrastructure and Deploy Applications

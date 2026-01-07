@@ -141,9 +141,9 @@ setup_host_config() {
     # Try to detect k3d registry port
     local k3d_registry_port="5000"
     if command -v k3d &> /dev/null; then
-        # Try to get registry port from k3d
+        # Try to get registry port from k3d using jq for reliable JSON parsing
         if k3d registry list 2>/dev/null | grep -q "kubevela-demo"; then
-            k3d_registry_port=$(k3d registry list -o json 2>/dev/null | grep -o '"port":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "5000")
+            k3d_registry_port=$(k3d registry list -o json 2>/dev/null | jq -r '.[0].port // "5000"' || echo "5000")
         fi
     fi
 

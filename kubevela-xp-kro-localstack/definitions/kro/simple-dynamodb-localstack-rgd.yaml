@@ -7,8 +7,12 @@ spec:
     apiVersion: v1alpha1
     kind: SimpleDynamoDBLocalStack
     spec:
-      tableName: string
-      region: string
+      # Table name: alphanumeric, hyphens, underscores, dots only (prevents shell injection)
+      # Length: 3-255 characters (AWS DynamoDB rules)
+      tableName: string & =~"^[a-zA-Z0-9._-]{3,255}$"
+
+      # AWS region: standard format (e.g., us-west-2, eu-central-1)
+      region: string & =~"^[a-z]{2}-[a-z]+-[0-9]{1}$"
     status:
       tableState: string
 
@@ -47,7 +51,7 @@ spec:
             spec:
               containers:
               - name: aws-cli
-                image: amazon/aws-cli:latest
+                image: amazon/aws-cli:2.15.17
                 securityContext:
                   allowPrivilegeEscalation: false
                   runAsNonRoot: true

@@ -31,7 +31,7 @@ KUBECONFIG=./kubeconfig-devcontainer vela ls -A
 
 - **host.docker.internal** - Special Docker hostname for DevContainer→Host connection
 - **Mapped port** - Automatically derived from current `docker port` mapping (changes on cluster restart)
-- **Simplified config** - Only includes what's needed, no certificate authority data
+- **Standard k3s config** - Includes full certificate-authority-data and client credentials from k3s.yaml
 - **Works immediately** - No manual editing required after cluster restart
 
 ### Legacy Solution: Update kubeconfig-internal Port

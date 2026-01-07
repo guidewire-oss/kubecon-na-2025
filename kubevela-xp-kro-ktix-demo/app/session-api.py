@@ -6,8 +6,9 @@ A simple REST API for managing user sessions with automatic TTL expiration
 import os
 import json
 import time
+import uuid
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify
 import boto3
 from botocore.exceptions import ClientError
@@ -84,8 +85,8 @@ def create_session():
         user_id = data['userId']
         session_data = data.get('data', {})
 
-        # Generate session ID
-        session_id = f"session-{user_id}-{int(time.time())}"
+        # Generate session ID (UUID4 ensures uniqueness even with concurrent requests)
+        session_id = f"session-{user_id}-{uuid.uuid4().hex[:12]}"
 
         # Calculate TTL
         ttl = get_ttl_timestamp(SESSION_TTL_HOURS)
@@ -107,7 +108,7 @@ def create_session():
         return jsonify({
             'sessionId': session_id,
             'userId': user_id,
-            'expiresAt': datetime.fromtimestamp(ttl).isoformat(),
+            'expiresAt': datetime.fromtimestamp(ttl, tz=timezone.utc).isoformat(),
             'data': session_data
         }), 201
 
@@ -136,7 +137,7 @@ def get_session(session_id):
             'userId': item['userId'],
             'data': json.loads(item['data']),
             'createdAt': item['createdAt'],
-            'expiresAt': datetime.fromtimestamp(int(item['ttl'])).isoformat()
+            'expiresAt': datetime.fromtimestamp(int(item['ttl']), tz=timezone.utc).isoformat()
         }), 200
 
     except Exception as e:
@@ -208,13 +209,22 @@ def delete_session(session_id):
 def get_user_sessions(user_id):
     """Get all sessions for a specific user"""
     try:
-        # Query using GSI (if created) or scan with filter
+        # Query using GSI (if created) or scan with filter, with pagination support
+        items = []
         response = table.scan(
             FilterExpression='userId = :uid',
             ExpressionAttributeValues={':uid': user_id}
         )
+        items.extend(response.get('Items', []))
 
-        items = response.get('Items', [])
+        # Handle pagination for large result sets (>1MB)
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(
+                FilterExpression='userId = :uid',
+                ExpressionAttributeValues={':uid': user_id},
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+            items.extend(response.get('Items', []))
         current_time = int(time.time())
 
         # Filter out expired sessions
@@ -224,7 +234,7 @@ def get_user_sessions(user_id):
                 'userId': item['userId'],
                 'data': json.loads(item['data']),
                 'createdAt': item['createdAt'],
-                'expiresAt': datetime.fromtimestamp(int(item['ttl'])).isoformat()
+                'expiresAt': datetime.fromtimestamp(int(item['ttl']), tz=timezone.utc).isoformat()
             }
             for item in items
             if int(item['ttl']) > current_time
@@ -245,8 +255,16 @@ def get_user_sessions(user_id):
 def list_sessions():
     """List all active sessions (admin endpoint)"""
     try:
+        # Scan with pagination support for large result sets (>1MB)
+        items = []
         response = table.scan()
-        items = response.get('Items', [])
+        items.extend(response.get('Items', []))
+
+        # Handle pagination
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response.get('Items', []))
+
         current_time = int(time.time())
 
         # Filter out expired sessions
@@ -255,7 +273,7 @@ def list_sessions():
                 'sessionId': item['id'],
                 'userId': item['userId'],
                 'createdAt': item['createdAt'],
-                'expiresAt': datetime.fromtimestamp(int(item['ttl'])).isoformat()
+                'expiresAt': datetime.fromtimestamp(int(item['ttl']), tz=timezone.utc).isoformat()
             }
             for item in items
             if int(item['ttl']) > current_time

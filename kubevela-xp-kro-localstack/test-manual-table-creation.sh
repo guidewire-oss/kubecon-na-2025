@@ -173,7 +173,7 @@ echo "  → Verify: kubectl get providerconfig default -o yaml | grep endpoint"
 echo ""
 echo "To clean up test resources:"
 echo "  kubectl delete simpledynamodb test-kro-manual-table -n default"
-echo "  kubectl delete table test-xp-manual-table -n default"
+echo "  kubectl delete table.dynamodb.aws.upbound.io test-xp-manual-table -n default"
 echo ""
 
 print_success "Manual test complete!"

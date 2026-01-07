@@ -13,8 +13,13 @@ kubectl get svc -n localstack-system localstack
 
 echo ""
 echo "Test 3: LocalStack service is reachable"
-kubectl run test-curl --image=curlimages/curl --rm --restart=Never -- \
-  curl -s $ENDPOINT/health || echo "Service responding"
+if kubectl run test-curl --image=curlimages/curl --rm --restart=Never -- \
+  curl -s $ENDPOINT/health > /dev/null 2>&1; then
+    echo "✓ Service is responding"
+else
+    echo "✗ Service is not responding"
+    exit 1
+fi
 
 echo ""
 echo "✓ LocalStack is ready!"

@@ -65,9 +65,8 @@ kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f 
 print_info "Creating LocalStack credentials..."
 kubectl create secret generic localstack-credentials \
     -n ack-system \
-    --from-literal=credentials="[default]
-aws_access_key_id = test
-aws_secret_access_key = test" \
+    --from-literal=aws_access_key_id="test" \
+    --from-literal=aws_secret_access_key="test" \
     --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
 print_success "ACK namespace and credentials ready"

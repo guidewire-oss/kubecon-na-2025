@@ -37,7 +37,7 @@ setup_port_forward() {
     local remote_port=$2
     local service=$3
     local namespace=${4:-default}
-    local kubeconfig=${KUBECONFIG:-.}
+    local kubeconfig=${KUBECONFIG:-$HOME/.kube/config}
 
     print_info "Setting up port-forward: localhost:$local_port -> $service:$remote_port"
 
@@ -71,7 +71,7 @@ setup_port_forward() {
 
 # Setup all necessary port-forwards based on environment
 setup_all_port_forwards() {
-    local kubeconfig=${KUBECONFIG:-.}
+    local kubeconfig=${KUBECONFIG:-$HOME/.kube/config}
     local pf_pids=()
 
     print_info "Setting up port-forwards for $TEST_ENDPOINT_MODE mode"
