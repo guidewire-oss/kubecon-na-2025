@@ -23,9 +23,9 @@ Automatically sets up k3d cluster, KubeVela, Crossplane, KRO, ACK, and LocalStac
 
 ### 2. Deploy Example App
 ```bash
-KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro.yaml
+KUBECONFIG=./kubeconfig-internal vela up -f definitions/examples/session-api-app-kro-localstack.yaml
 ```
-Creates a DynamoDB table + Flask session API (KRO version). Use `session-api-app-xp.yaml` for Crossplane.
+Creates a DynamoDB table + Flask session API (KRO version with LocalStack).
 
 ### 3. Check Status
 ```bash
@@ -61,7 +61,7 @@ See **`DEBUGGING.md`** for:
 |---------|----------|-----------------|
 | AWS Account | Required | ❌ Not needed |
 | Cost | $ per operation | Free |
-| Table Names | `tenant-atlantis-*` prefix | Any name |
+| Table Names | Requires specific prefix | Any name |
 | Speed | API latency | Instant |
 
 ### 🌐 Multi-Cloud Landscape: KRO vs Crossplane
