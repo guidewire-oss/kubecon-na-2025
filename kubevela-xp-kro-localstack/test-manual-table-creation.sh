@@ -1,6 +1,7 @@
 #!/bin/bash
 # Manual table creation test - helps identify where the issue is
-# Tests both KRO and Crossplane implementations independently
+# Tests KRO implementation for debugging table creation failures
+# Useful when check-dynamodb-tables.sh shows no tables despite successful setup
 
 set -e
 

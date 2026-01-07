@@ -13,6 +13,10 @@ env/
 # Environment variables
 .env
 .env.sh
+.env.ci
+.env.devcontainer
+.env.host
+.mcp.json
 
 # Generated files from notebooks
 test/

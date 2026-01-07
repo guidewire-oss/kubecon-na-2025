@@ -1,6 +1,11 @@
 #!/bin/bash
 # Initialize DynamoDB tables in LocalStack
 # This script creates the necessary tables for the session API applications
+#
+# Note: This script uses HTTP (not HTTPS) for LocalStack connectivity.
+# LocalStack endpoints use plain HTTP; attempting HTTPS would fail.
+# The LocalStack service runs internally (not exposed to the internet),
+# so HTTP is appropriate for this demo environment.
 
 set -e
 

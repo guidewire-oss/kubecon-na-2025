@@ -29,11 +29,11 @@
 					message: "Table ACTIVE - ARN: \(tableArn)"
 				}
 				if !context.status.healthy {
-					message: "Table provisioning - State: \(tableState)"
-					if context.output.status.conditions != _|_ {
-						if len(context.output.status.conditions) > 0 {
-							message: context.output.status.conditions[0].message
-						}
+					if context.output.status.conditions != _|_ && len(context.output.status.conditions) > 0 {
+						message: context.output.status.conditions[0].message
+					}
+					if context.output.status.conditions == _|_ || len(context.output.status.conditions) == 0 {
+						message: "Table provisioning - State: \(tableState)"
 					}
 				}
 				"""#

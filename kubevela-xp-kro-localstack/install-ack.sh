@@ -1,6 +1,11 @@
 #!/bin/bash
 # Manual ACK DynamoDB Controller Installation for LocalStack
 # Use this if Phase 6 auto-installation didn't work
+#
+# Purpose: The ACK (AWS Controllers for Kubernetes) DynamoDB controller is required
+# when using the standard KRO SimpleDynamoDB component that targets real AWS.
+# For LocalStack-only demo, this is optional and not needed.
+# Keep this script for future AWS integration or troubleshooting.
 
 set -e
 
