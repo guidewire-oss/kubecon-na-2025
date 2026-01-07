@@ -51,7 +51,7 @@ template: {
 			name: context.name
 		}
 		spec: {
-			// Note: The RGD already adds the tenant-atlantis- prefix, so pass the base name
+			// Note: Pass the table name directly (no prefix required for LocalStack)
 			tableName: parameter.tableName
 			region:    parameter.region
 		}

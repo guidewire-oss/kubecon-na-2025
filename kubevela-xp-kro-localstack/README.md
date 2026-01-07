@@ -192,15 +192,14 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_DEFAULT_REGION=us-west-2
 ```
 
-**Important**: The IAM user must have specific DynamoDB permissions. See **[IAM_POLICY.md](IAM_POLICY.md)** for the complete minimal IAM policy required.
+**LocalStack Notes**: No AWS credentials or IAM policies needed! LocalStack runs locally with dummy credentials (key=test, secret=test). Table names can be any valid DynamoDB name - no special prefixes required.
 
-**Key Requirements**:
-- Table names must start with `tenant-atlantis-` prefix (automatically added by components)
-- Permissions scoped to `us-west-2` region
-- Includes: CreateTable, DescribeTable, UpdateTable, DeleteTable, and feature-specific actions
-- See [IAM_POLICY.md](IAM_POLICY.md) for full policy and setup instructions
-
-**🔒 Automatic Table Name Prefix**: All component definitions automatically prepend `tenant-atlantis-` to table names for IAM policy compliance. You only need to specify the base table name.
+**Key Features**:
+- ✅ No AWS account needed
+- ✅ Any table name (e.g., `user-sessions`, `products`, `orders`)
+- ✅ Instant table creation (no API latency)
+- ✅ Perfect for development and testing
+- ✅ Tables persisted in LocalStack pod (until cluster restart)
 
 ## Architecture
 
@@ -464,12 +463,12 @@ kubectl apply -f kro-rbac-fix.yaml
 kubectl rollout restart deployment/kro -n kro-system
 ```
 
-### Issue: Table names require specific prefix
+### Issue: Table creation not working
 
-**For the demo app, tables must start with `tenant-atlantis-`:**
+**Check table names**: Ensure table names use valid DynamoDB characters (alphanumeric, dash, underscore, dot):
 - Edit the application YAML files
-- Update `DYNAMODB_TABLE_NAME` environment variable
-- Or adjust your IAM policy to allow the desired table names
+- Update `DYNAMODB_TABLE_NAME` environment variable with a valid name
+- Examples: `user-sessions`, `products-v1`, `demo_orders.bak`
 
 ### Issue: Kubeconfig no longer works after cluster restart (DevContainer)
 
@@ -642,7 +641,7 @@ This project is provided as-is for educational and demonstration purposes.
 - **Fixed optional field handling**: Added CEL optional operator (`?`) for status fields that may not exist
 - **Fixed AWS API validation**: Completely removed optional feature specifications when disabled (streams, encryption, PITR, TTL)
 - **Fixed health checks**: Updated component definition to check for `state == "ACTIVE"` instead of `state == "Ready"`
-- **Fixed IAM compatibility**: Updated all examples to use `us-west-2` region and `tenant-atlantis-` table name prefix
+- **LocalStack integration**: All examples configured for LocalStack with simple table names (no AWS prefix required)
 - **Removed secondary indexes from RGD**: KRO doesn't support complex nested arrays in schema
 
 **✅ What's Working Now**

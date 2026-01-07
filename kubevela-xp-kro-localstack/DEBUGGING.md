@@ -1,6 +1,8 @@
-# Debugging Guide - LocalStack Demo
+# Debugging Guide - LocalStack KRO Demo
 
 This guide helps troubleshoot issues with the LocalStack demo, especially when DynamoDB tables aren't being created.
+
+**Note:** This demo uses KRO only (Crossplane examples have been removed for simplicity). All references below are to KRO ResourceGraphDefinitions and ACK controllers.
 
 ## Problem: Tables Not Created in LocalStack
 
@@ -75,13 +77,9 @@ Tables not in LocalStack?
 │                   ├─ Errors about credentials
 │                   │  └─→ Fix: verify ACK secrets
 │                   └─ No errors but table not in LocalStack
-│                      └─→ Run: test-manual-table-creation.sh
-│                         └─→ Check ACK logs during test
+│                      └─→ Check ACK deployment: kubectl logs -n ack-system -l app=ack-dynamodb-controller
 │
-├─→ Also check Crossplane (similar tree for Table resources)
-│
-└─→ Run: test-manual-table-creation.sh
-    └─→ Isolate KRO vs Crossplane issues
+└─→ For manual testing, see "Test KRO Table Creation" section
 ```
 
 ## Common Issues and Fixes
@@ -198,74 +196,12 @@ kubectl get deployment -n ack-system ack-dynamodb-controller -o yaml | grep -A 2
 kubectl logs -n ack-system -l app=ack-dynamodb-controller | tail -100
 ```
 
-### Issue 4: Crossplane Table Exists But No LocalStack Table
-
-**Symptom:**
-- `debug-resources.sh` shows Crossplane Table resources
-- LocalStack shows no tables
-- Crossplane provider running but tables not syncing
-
-**Causes:**
-1. Crossplane ProviderConfig not referencing LocalStack endpoint
-2. Credentials misconfigured
-3. Crossplane controller can't reach LocalStack
-
-**Debugging:**
-
-```bash
-# Check ProviderConfig
-kubectl get providerconfig -A -o yaml
-
-# Check ProviderConfig endpoint
-kubectl get providerconfig default -o yaml | grep -A 10 "endpoint:"
-
-# Check Table resource status
-kubectl get table.dynamodb.aws.upbound.io -A -o yaml | grep -A 20 "status:"
-
-# Check Crossplane controller logs
-kubectl logs -n crossplane-system -l app=crossplane | grep -i error
-kubectl logs -n crossplane-system -l app=crossplane | grep -i table
-
-# Check if credentials are correct
-kubectl get secret -n crossplane-system localstack-credentials -o yaml
-```
-
-**Fix:**
-```bash
-# Verify ProviderConfig has correct endpoint
-kubectl get providerconfig default -o yaml
-
-# If endpoint is wrong, delete and reapply
-kubectl delete providerconfig default
-kubectl apply -f - <<'EOF'
-apiVersion: aws.upbound.io/v1beta1
-kind: ProviderConfig
-metadata:
-  name: default
-spec:
-  credentials:
-    source: Secret
-    secretRef:
-      namespace: crossplane-system
-      name: localstack-credentials
-      key: credentials
-  endpoint:
-    url:
-      type: Static
-      static: "http://localstack.localstack-system.svc.cluster.local:4566"
-    hostnameImmutable: true
-  skip_credentials_validation: true
-  skip_requesting_account_id: true
-  skip_metadata_api_check: true
-  s3_use_path_style: true
-EOF
-```
 
 ## Manual Test Flow
 
-If `test-manual-table-creation.sh` is too complex, test manually:
+For manual testing without running the full test script:
 
-### Test 1: Can KRO create tables?
+### Test: Can KRO create tables?
 
 ```bash
 # Create SimpleDynamoDB manually
@@ -284,39 +220,6 @@ EOF
 sleep 10
 kubectl get simpledynamodb test-kro-simple -o yaml
 kubectl get table.dynamodb.services.k8s.aws -o yaml
-
-# Check LocalStack
-kubectl run -it --rm debug --image=amazon/aws-cli -- \
-  --endpoint-url=http://localstack.localstack-system.svc.cluster.local:4566 \
-  --region=us-west-2 \
-  dynamodb list-tables
-```
-
-### Test 2: Can Crossplane create tables?
-
-```bash
-# Create Table manually
-kubectl apply -f - <<'EOF'
-apiVersion: dynamodb.aws.upbound.io/v1beta1
-kind: Table
-metadata:
-  name: test-xp
-  namespace: default
-spec:
-  forProvider:
-    region: us-west-2
-    attribute:
-      - name: id
-        type: S
-    hashKey: id
-    billingMode: PAY_PER_REQUEST
-  providerConfigRef:
-    name: default
-EOF
-
-# Wait and check
-sleep 10
-kubectl get table test-xp -o yaml
 
 # Check LocalStack
 kubectl run -it --rm debug --image=amazon/aws-cli -- \
@@ -347,20 +250,17 @@ kubectl apply -f definitions/examples/session-api-app-kro.yaml
 ## Useful Commands
 
 ```bash
-# List all DynamoDB resources
-kubectl get all -A | grep -i dynamodb
+# List all SimpleDynamoDB resources
+kubectl get simpledynamodb -A
 
-# Watch SimpleDynamoDB resources
+# Watch SimpleDynamoDB resources being created
 kubectl get simpledynamodb -A -w
 
-# Watch ACK Table resources
+# List all ACK Table resources
+kubectl get table.dynamodb.services.k8s.aws -A
+
+# Watch ACK Table resources being created
 kubectl get table.dynamodb.services.k8s.aws -A -w
-
-# Watch Crossplane Table resources
-kubectl get table.dynamodb.aws.upbound.io -A -w
-
-# Check all ProviderConfigs
-kubectl get providerconfig -A
 
 # Check LocalStack pod
 kubectl get pods -n localstack-system -o wide
