@@ -48,6 +48,13 @@ spec:
               containers:
               - name: aws-cli
                 image: amazon/aws-cli:latest
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  runAsNonRoot: true
+                  runAsUser: 1000
+                  capabilities:
+                    drop:
+                      - ALL
                 env:
                 - name: AWS_ACCESS_KEY_ID
                   value: "test"
