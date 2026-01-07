@@ -271,4 +271,7 @@ def list_sessions():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    # For demo purposes only - binding to 0.0.0.0
+    # In production, use a reverse proxy or bind to 127.0.0.1
+    # This allows access from any network interface for easy testing with LocalStack
     app.run(host='0.0.0.0', port=port)
