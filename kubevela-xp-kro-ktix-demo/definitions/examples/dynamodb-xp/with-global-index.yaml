@@ -7,7 +7,7 @@ metadata:
   namespace: default
 spec:
   components:
-    - name: users-table
+    - name: users-table-xp
       type: aws-dynamodb-xp
       properties:
         region: us-east-1
