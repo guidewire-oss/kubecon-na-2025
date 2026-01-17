@@ -25,7 +25,7 @@ template: {
 			namespace: context.namespace
 		}
 		spec: {
-			name:                  parameter.tableName + "-kratix"
+			name:                  parameter.tableName + "-kratix-kro"
 			region:                parameter.region
 			billingMode:           parameter.billingMode
 			attributeDefinitions:  parameter.attributeDefinitions
