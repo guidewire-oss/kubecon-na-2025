@@ -51,9 +51,9 @@ spec:
           tableName: tenant-atlantis-transactions-kratix
           attributeDefinitions:
           - attributeName: accountId
-            attributeType: S
+            attributeType: "S"
           - attributeName: timestamp
-            attributeType: N
+            attributeType: "N"
           keySchema:
           - attributeName: accountId
             keyType: HASH

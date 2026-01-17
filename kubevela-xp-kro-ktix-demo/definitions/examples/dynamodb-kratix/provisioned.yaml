@@ -54,9 +54,9 @@ spec:
           tableName: tenant-atlantis-orders-table-kratix
           attributeDefinitions:
           - attributeName: orderId
-            attributeType: S
+            attributeType: "S"
           - attributeName: orderDate
-            attributeType: N
+            attributeType: "N"
           keySchema:
           - attributeName: orderId
             keyType: HASH
