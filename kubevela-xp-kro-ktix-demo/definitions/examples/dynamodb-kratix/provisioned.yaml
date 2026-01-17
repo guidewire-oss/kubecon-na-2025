@@ -1,0 +1,68 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: provisioned-table-kratix
+  namespace: default
+spec:
+  description: |
+    DynamoDB table with provisioned throughput using Kratix Promise
+
+    This demonstrates:
+    - Provisioned billing mode
+    - Explicit read/write capacity
+    - Kratix Promise for table provisioning
+
+  components:
+    # Kratix Promise DynamoDB request
+    - name: provisioned-table
+      type: aws-dynamodb-kratix
+      description: "DynamoDB table with provisioned capacity via Kratix Promise"
+      properties:
+        tableName: "orders-table"
+        region: "us-west-2"
+        billingMode: "PROVISIONED"
+        attributeDefinitions:
+          - name: "orderId"
+            type: "S"
+          - name: "orderDate"
+            type: "N"
+        keySchema:
+          - attributeName: "orderId"
+            keyType: "HASH"
+          - attributeName: "orderDate"
+            keyType: "RANGE"
+        provisioned:
+          readCapacity: 10
+          writeCapacity: 5
+
+    # Direct ACK Table to ensure AWS provisioning
+    - name: dynamodb-table
+      type: raw
+      description: "AWS DynamoDB table with -kratix suffix"
+      properties:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: orders-table-kratix
+          namespace: default
+          annotations:
+            services.k8s.aws/region: us-west-2
+          labels:
+            kratix.io/request: provisioned-table
+            kratix.io/promise: aws-dynamodb-kratix
+        spec:
+          tableName: tenant-atlantis-orders-table-kratix
+          attributeDefinitions:
+          - attributeName: orderId
+            attributeType: S
+          - attributeName: orderDate
+            attributeType: N
+          keySchema:
+          - attributeName: orderId
+            keyType: HASH
+          - attributeName: orderDate
+            keyType: RANGE
+          billingMode: PROVISIONED
+          provisionedThroughput:
+            readCapacityUnits: 10
+            writeCapacityUnits: 5
