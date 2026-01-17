@@ -71,9 +71,9 @@ spec:
                           type:
                             type: string
                             enum:
-                              - S
-                              - N
-                              - B
+                              - "S"
+                              - "N"
+                              - "B"
                     keySchema:
                       description: "Key schema"
                       type: array
