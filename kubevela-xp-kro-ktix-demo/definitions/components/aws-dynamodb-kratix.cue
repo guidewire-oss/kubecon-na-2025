@@ -64,8 +64,8 @@ template: {
 
 		// Provisioned throughput (only used when billingMode is PROVISIONED)
 		provisioned?: {
-			readCapacity:  *5 | int & >=1 & <=40000
-			writeCapacity: *5 | int & >=1 & <=40000
+			readCapacity:  *5 | (int & >=1 & <=40000)
+			writeCapacity: *5 | (int & >=1 & <=40000)
 		}
 	}
 }
