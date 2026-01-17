@@ -319,6 +319,23 @@ if [ "$SKIP_INSTALL" = false ]; then
     }
     print_success "Kratix controller is ready"
 
+    echo "Building and importing Kratix Promise Docker image..."
+    if [ -f "$DEMO_ROOT/definitions/promises/aws-dynamodb-kratix/Dockerfile" ]; then
+        cd "$DEMO_ROOT/definitions/promises/aws-dynamodb-kratix"
+        DOCKER_BUILDKIT=0 docker build -t k3d-kubevela-registry:5000/kratix/dynamodb-resource-configure:0.1.0 . || {
+            print_warning "Docker build failed, but continuing"
+        }
+        cd "$DEMO_ROOT"
+
+        echo "Importing Docker image into k3d cluster..."
+        k3d image import k3d-kubevela-registry:5000/kratix/dynamodb-resource-configure:0.1.0 -c kubevela-demo || {
+            print_warning "Docker image import may have failed, but continuing"
+        }
+        print_success "Docker image built and imported"
+    else
+        print_warning "Dockerfile not found at definitions/promises/aws-dynamodb-kratix/Dockerfile"
+    fi
+
     echo "Deploying DynamoDB request CRD..."
     if [ -f "$DEMO_ROOT/definitions/dynamodb-request-crd.yaml" ]; then
         kubectl apply -f "$DEMO_ROOT/definitions/dynamodb-request-crd.yaml"
