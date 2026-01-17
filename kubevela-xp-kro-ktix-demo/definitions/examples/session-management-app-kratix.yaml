@@ -32,8 +32,6 @@ spec:
         keySchema:
           - attributeName: "id"
             keyType: "HASH"
-          - attributeName: "userId"
-            keyType: "HASH"
 
     # Session API web service
     - name: session-api-kratix

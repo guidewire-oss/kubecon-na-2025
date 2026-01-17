@@ -117,6 +117,41 @@ spec:
                     itemCount:
                       type: integer
 
+  # Workflows define how Kratix processes requests
+  workflows:
+    resource:
+      configure:
+        - apiVersion: platform.kratix.io/v1alpha1
+          kind: Pipeline
+          metadata:
+            name: dynamodb-configure-pipeline
+          spec:
+            containers:
+              - image: k3d-kubevela-registry:5000/kratix/dynamodb-resource-configure:0.1.0
+                name: generate-table-manifest
+                env:
+                  - name: REQUEST_PATH
+                    value: /kratix/input/object.yaml
+                  - name: OUTPUT_STATE_PATH
+                    value: /kratix/output
+      delete:
+        - apiVersion: platform.kratix.io/v1alpha1
+          kind: Pipeline
+          metadata:
+            name: dynamodb-delete-pipeline
+          spec:
+            containers:
+              - image: bitnami/kubectl:latest
+                name: cleanup-dynamodb-table
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    kubectl delete table \
+                      -l kratix.io/request=$(cat /kratix/input/metadata.name) \
+                      --namespace default 2>/dev/null || true
+
   # Destination selectors - deploy to the current cluster
   destinationSelectors:
-    - matchLabels: {}
+    - matchLabels:
+        kratix.io/enabled: "true"
