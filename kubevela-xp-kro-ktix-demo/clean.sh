@@ -53,9 +53,10 @@ echo "=========================================="
 # Update kubeconfig port for DevContainer (host doesn't need this)
 if [ "$ENVIRONMENT" = "devcontainer" ]; then
     CURRENT_PORT=$(docker port k3d-kubevela-demo-serverlb 2>/dev/null | grep 6443 | awk '{print $3}' | cut -d: -f2)
-    if [ -n "$CURRENT_PORT" ]; then
+    if [ -n "$CURRENT_PORT" ] && [ -f "$KUBECONFIG" ]; then
         echo "Updating kubeconfig with current port: $CURRENT_PORT"
-        sed -i "s|server: https://.*$|server: https://host.docker.internal:$CURRENT_PORT|" "$KUBECONFIG"
+        # Use a temporary file for sed to avoid in-place edit issues
+        sed "s|server: https://.*|server: https://host.docker.internal:$CURRENT_PORT|" "$KUBECONFIG" > "$KUBECONFIG.tmp" && mv "$KUBECONFIG.tmp" "$KUBECONFIG"
     fi
 fi
 

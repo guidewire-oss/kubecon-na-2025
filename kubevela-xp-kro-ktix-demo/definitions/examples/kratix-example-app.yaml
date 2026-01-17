@@ -1,0 +1,29 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: kratix-example-dynamodb
+  namespace: default
+spec:
+  description: |
+    Example KubeVela Application that creates a DynamoDB table
+    through the Kratix promise using the aws-dynamodb-kratix component
+
+  components:
+    # Create a DynamoDB table via Kratix promise
+    - name: user-sessions-table
+      type: aws-dynamodb-kratix
+      description: "User sessions table created via Kratix promise"
+      properties:
+        tableName: "user-sessions"
+        region: "us-west-2"
+        billingMode: "PAY_PER_REQUEST"
+        attributeDefinitions:
+          - name: "sessionId"
+            type: "S"
+          - name: "expiresAt"
+            type: "N"
+        keySchema:
+          - attributeName: "sessionId"
+            keyType: "HASH"
+          - attributeName: "expiresAt"
+            keyType: "RANGE"

@@ -1,0 +1,71 @@
+# Example DynamoDB Request for testing the Kratix Promise
+# This demonstrates how users interact with the aws-dynamodb-kratix Promise
+
+---
+# Simple Example: Basic user table with on-demand billing
+apiVersion: dynamodb.kratix.io/v1alpha1
+kind: DynamoDBRequest
+metadata:
+  name: simple-users-table
+  namespace: default
+spec:
+  name: users-table
+  region: us-east-1
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: userId
+      type: S
+    - name: email
+      type: S
+  keySchema:
+    - attributeName: userId
+      keyType: HASH
+
+---
+# Provisioned Example: Order table with composite key and provisioned capacity
+apiVersion: dynamodb.kratix.io/v1alpha1
+kind: DynamoDBRequest
+metadata:
+  name: production-orders-table
+  namespace: default
+spec:
+  name: orders-table
+  region: us-east-1
+  billingMode: PROVISIONED
+  attributeDefinitions:
+    - name: customerId
+      type: S
+    - name: orderId
+      type: S
+    - name: orderDate
+      type: N
+  keySchema:
+    - attributeName: customerId
+      keyType: HASH
+    - attributeName: orderId
+      keyType: RANGE
+  provisioned:
+    readCapacity: 10
+    writeCapacity: 5
+
+---
+# Time-Series Example: Metrics table with numeric sort key
+apiVersion: dynamodb.kratix.io/v1alpha1
+kind: DynamoDBRequest
+metadata:
+  name: timeseries-metrics-table
+  namespace: default
+spec:
+  name: metrics-table
+  region: us-east-1
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: metricName
+      type: S
+    - name: timestamp
+      type: N
+  keySchema:
+    - attributeName: metricName
+      keyType: HASH
+    - attributeName: timestamp
+      keyType: RANGE

@@ -1,0 +1,99 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dynamodbrequests.dynamodb.kratix.io
+  labels:
+    kratix.io/promise: aws-dynamodb-kratix
+spec:
+  group: dynamodb.kratix.io
+  names:
+    kind: DynamoDBRequest
+    plural: dynamodbrequests
+    singular: dynamodbrequest
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: "Name of the DynamoDB table"
+                type: string
+                minLength: 3
+                maxLength: 255
+              region:
+                description: "AWS region"
+                type: string
+                enum:
+                  - us-east-1
+                  - us-east-2
+                  - us-west-1
+                  - us-west-2
+                  - eu-west-1
+                  - eu-central-1
+                  - ap-southeast-1
+                  - ap-northeast-1
+                  - ap-south-1
+                default: "us-west-2"
+              billingMode:
+                description: "Billing mode"
+                type: string
+                enum:
+                  - PAY_PER_REQUEST
+                  - PROVISIONED
+                default: PAY_PER_REQUEST
+              attributeDefinitions:
+                description: "Table attributes"
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                      enum:
+                        - "S"
+                        - "N"
+                        - "B"
+              keySchema:
+                description: "Key schema"
+                type: array
+                items:
+                  type: object
+                  properties:
+                    attributeName:
+                      type: string
+                    keyType:
+                      type: string
+                      enum:
+                        - "HASH"
+                        - "RANGE"
+              provisioned:
+                description: "Provisioned capacity"
+                type: object
+                properties:
+                  readCapacity:
+                    type: integer
+                  writeCapacity:
+                    type: integer
+            required:
+              - name
+              - region
+          status:
+            type: object
+            properties:
+              tableStatus:
+                type: string
+              tableArn:
+                type: string
+              conditions:
+                type: array
+                items:
+                  type: object
