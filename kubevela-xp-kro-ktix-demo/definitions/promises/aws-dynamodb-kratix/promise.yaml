@@ -2,275 +2,121 @@ apiVersion: platform.kratix.io/v1alpha1
 kind: Promise
 metadata:
   name: aws-dynamodb-kratix
-  namespace: kratix
+  namespace: kratix-platform-system
   labels:
     kratix.io/promise-version: "0.1.0"
     platform: aws
     service: dynamodb
-
 spec:
   # API defines the CRD that users request when creating a DynamoDB table
   api:
-    apiVersion: dynamodb.kratix.io/v1alpha1
-    kind: DynamoDBRequest
+    apiVersion: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
     metadata:
-      name: dynamodb-request
+      name: dynamodbrequests.dynamodb.kratix.io
     spec:
-      schema:
-        group: dynamodb.kratix.io
+      group: dynamodb.kratix.io
+      scope: Namespaced
+      names:
         kind: DynamoDBRequest
-        names:
-          kind: DynamoDBRequest
-          plural: dynamodbrequests
-          singular: dynamodbrequest
-        scope: Namespaced
-        version: v1alpha1
-
-        # Schema for user-provided configuration
-        spec:
-          properties:
-            name:
-              description: "Name of the DynamoDB table"
-              type: string
-              minLength: 3
-              maxLength: 255
-              pattern: '^[a-zA-Z0-9._-]+$'
-
-            region:
-              description: "AWS region where the table will be created"
-              type: string
-              enum:
-                - us-east-1
-                - us-east-2
-                - us-west-1
-                - us-west-2
-                - eu-west-1
-                - eu-central-1
-                - ap-southeast-1
-                - ap-northeast-1
-                - ap-south-1
-
-            billingMode:
-              description: "Billing mode for the table"
-              type: string
-              enum:
-                - PAY_PER_REQUEST
-                - PROVISIONED
-              default: PAY_PER_REQUEST
-
-            attributeDefinitions:
-              description: "Attributes that are defined for the table"
-              type: array
-              minItems: 1
-              items:
-                type: object
-                required:
-                  - name
-                  - type
-                properties:
-                  name:
-                    description: "Name of the attribute"
-                    type: string
-                    minLength: 1
-                    maxLength: 255
-                  type:
-                    description: "Scalar attribute type (S=String, N=Number, B=Binary)"
-                    type: string
-                    enum:
-                      - S
-                      - N
-                      - B
-
-            keySchema:
-              description: "The primary key schema for the table"
-              type: array
-              minItems: 1
-              maxItems: 2
-              items:
-                type: object
-                required:
-                  - attributeName
-                  - keyType
-                properties:
-                  attributeName:
-                    description: "Name of the key attribute"
-                    type: string
-                  keyType:
-                    description: "Type of key (HASH=partition, RANGE=sort)"
-                    type: string
-                    enum:
-                      - HASH
-                      - RANGE
-
-            provisioned:
-              description: "Provisioned throughput configuration (required for PROVISIONED mode)"
+        plural: dynamodbrequests
+        singular: dynamodbrequest
+        listKind: DynamoDBRequestList
+      versions:
+        - name: v1alpha1
+          served: true
+          storage: true
+          schema:
+            openAPIV3Schema:
               type: object
               properties:
-                readCapacity:
-                  description: "Read capacity units"
-                  type: integer
-                  minimum: 1
-                  maximum: 40000
-                  default: 5
-                writeCapacity:
-                  description: "Write capacity units"
-                  type: integer
-                  minimum: 1
-                  maximum: 40000
-                  default: 5
+                spec:
+                  type: object
+                  properties:
+                    name:
+                      description: "Name of the DynamoDB table"
+                      type: string
+                      minLength: 3
+                      maxLength: 255
+                    region:
+                      description: "AWS region"
+                      type: string
+                      default: "us-west-2"
+                      enum:
+                        - us-east-1
+                        - us-east-2
+                        - us-west-1
+                        - us-west-2
+                        - eu-west-1
+                        - eu-central-1
+                        - ap-southeast-1
+                        - ap-northeast-1
+                        - ap-south-1
+                    billingMode:
+                      description: "Billing mode"
+                      type: string
+                      enum:
+                        - PAY_PER_REQUEST
+                        - PROVISIONED
+                      default: PAY_PER_REQUEST
+                    attributeDefinitions:
+                      description: "Table attributes"
+                      type: array
+                      minItems: 1
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          type:
+                            type: string
+                            enum:
+                              - S
+                              - N
+                              - B
+                    keySchema:
+                      description: "Key schema"
+                      type: array
+                      minItems: 1
+                      items:
+                        type: object
+                        properties:
+                          attributeName:
+                            type: string
+                          keyType:
+                            type: string
+                            enum:
+                              - HASH
+                              - RANGE
+                    provisioned:
+                      description: "Provisioned throughput (for PROVISIONED mode)"
+                      type: object
+                      properties:
+                        readCapacity:
+                          type: integer
+                          minimum: 1
+                          maximum: 40000
+                          default: 5
+                        writeCapacity:
+                          type: integer
+                          minimum: 1
+                          maximum: 40000
+                          default: 5
+                  required:
+                    - name
+                    - region
+                    - attributeDefinitions
+                    - keySchema
+                status:
+                  type: object
+                  properties:
+                    tableStatus:
+                      type: string
+                    tableArn:
+                      type: string
+                    itemCount:
+                      type: integer
 
-          required:
-            - name
-            - region
-            - attributeDefinitions
-            - keySchema
-
-        # Status reflects the state of the created table
-        status:
-          properties:
-            tableStatus:
-              description: "Current status of the DynamoDB table"
-              type: string
-              enum:
-                - CREATING
-                - UPDATING
-                - DELETING
-                - ACTIVE
-                - FAILED
-
-            tableArn:
-              description: "ARN of the created table"
-              type: string
-
-            itemCount:
-              description: "Number of items in the table"
-              type: integer
-
-            tableSizeBytes:
-              description: "Size of the table in bytes"
-              type: integer
-
-            conditions:
-              description: "Detailed conditions about the table state"
-              type: array
-              items:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - "True"
-                      - "False"
-                      - "Unknown"
-                  reason:
-                    type: string
-                  message:
-                    type: string
-
-  # Dependencies defines what must be installed before the Promise can be used
-  dependencies:
-    - apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: ack-system
-
-    - apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: ack-dynamodb-controller
-        namespace: ack-system
-
-    - apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      metadata:
-        name: ack-dynamodb-controller
-      rules:
-        - apiGroups:
-            - dynamodb.services.k8s.aws
-          resources:
-            - tables
-          verbs:
-            - get
-            - list
-            - watch
-            - create
-            - update
-            - patch
-            - delete
-        - apiGroups:
-            - ""
-          resources:
-            - secrets
-          verbs:
-            - get
-            - list
-            - watch
-
-    - apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: ack-dynamodb-controller
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: ack-dynamodb-controller
-      subjects:
-        - kind: ServiceAccount
-          name: ack-dynamodb-controller
-          namespace: ack-system
-
-  # Workflows define how the Promise is managed
-  workflows:
-    # Promise-level workflows run once when the Promise is installed
-    promise:
-      configure:
-        - kratix-promise-configure-workflow
-      delete:
-        - kratix-promise-delete-workflow
-
-    # Resource-level workflows run for each user request
-    resource:
-      configure:
-        - kratix-resource-configure-workflow
-      delete:
-        - kratix-resource-delete-workflow
-
-  # Pipeline definitions - how to execute the workflows
-  # These use standard Kratix workflow executors
-  workflows:
-    promise:
-      configure:
-        - name: install-ack-controller
-          image: "aws-controllers-k8s/dynamodb-controller:latest"
-          env:
-            - name: NAMESPACE
-              value: ack-system
-      delete:
-        - name: remove-ack-controller
-          image: "aws-controllers-k8s/dynamodb-controller:latest"
-          env:
-            - name: NAMESPACE
-              value: ack-system
-
-    resource:
-      configure:
-        - name: generate-table-manifest
-          image: "k3d-kubevela-registry:5000/kratix/dynamodb-resource-configure:0.1.0"
-          env:
-            - name: ACK_NAMESPACE
-              value: ack-system
-      delete:
-        - name: cleanup-table
-          image: kratix/kubectl-executor
-          args:
-            - delete
-            - table
-            - $(request.metadata.name)
-            - --namespace
-            - $(request.metadata.namespace)
-
-  # Destination selectors determine where requests are routed
-  # (Routes to current cluster - no specific label matching required)
-  destinationSelectors: []
+  # Destination selectors - deploy to the current cluster
+  destinationSelectors:
+    - matchLabels: {}
