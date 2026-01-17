@@ -27,6 +27,7 @@ template: {
 		spec: {
 			name:                  parameter.tableName
 			region:                parameter.region
+			// Note: Kratix Promise workflow will add "-kratix" suffix to table name
 			billingMode:           parameter.billingMode
 			attributeDefinitions:  parameter.attributeDefinitions
 			keySchema:             parameter.keySchema
