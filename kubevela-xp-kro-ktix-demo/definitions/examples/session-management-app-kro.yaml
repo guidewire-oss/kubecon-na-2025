@@ -9,7 +9,7 @@ spec:
     - name: user-sessions
       type: aws-dynamodb-kro
       properties:
-        tableName: user-sessions
+        tableName: user-sessions-kro
         region: us-west-2
         attributeDefinitions:
           - attributeName: sessionId
@@ -36,7 +36,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "tenant-atlantis-user-sessions"
+            value: "tenant-atlantis-user-sessions-kro"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS

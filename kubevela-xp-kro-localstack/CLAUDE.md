@@ -1,6 +1,8 @@
 # CLAUDE.md - LocalStack Demo Developer Guide
 
-Quick reference for developing with the LocalStack KubeVela demo.
+Quick reference for developing with the LocalStack KubeVela + KRO + Crossplane demo.
+
+This guide is for developers and contributors. For project overview, see **README.md**. For system architecture, see **ARCHITECTURE.md**. For troubleshooting, see **DEBUGGING.md**.
 
 ## ⚙️ Multi-Environment Configuration
 
@@ -217,53 +219,62 @@ These are automatically applied by `./setup.sh` - no manual intervention needed.
 | Components not showing | Run `./setup.sh --skip-install` to redeploy definitions |
 | Docker build fails | Disable BuildKit: `DOCKER_BUILDKIT=0 ./setup.sh` |
 
-## Directory Structure
+## File & Script Reference
 
-```
-.
-├── config/
-│   ├── detect-env.sh                 # Environment detection and configuration
-│   └── port-forward-helpers.sh       # Port-forward utilities
-├── .env.devcontainer                 # DevContainer configuration
-├── .env.host                         # Host machine configuration
-├── .env.ci                           # CI/CD configuration
-├── .env                              # GITIGNORED: User overrides
-├── create-kubeconfig.sh              # Kubeconfig generator (run after cluster restart)
-├── setup.sh                          # Full setup automation
-├── clean.sh                          # Cleanup script (deletes cluster and all resources)
-├── check-dynamodb-tables.sh          # Check DynamoDB tables in LocalStack
-├── debug-resources.sh                # Full diagnostic: shows all resources and controller logs
-├── test-manual-table-creation.sh     # Manual test: isolates KRO vs Crossplane issues
-├── kubeconfig-internal               # Generated kubeconfig for DevContainer
-├── localstack-values.yaml            # LocalStack Helm values
-├── definitions/
-│   ├── components/
-│   │   ├── aws-dynamodb-simple-kro.cue    # KRO simple table component
-│   │   └── aws-dynamodb-simple-xp.cue     # Crossplane simple table component
-│   ├── kro/
-│   │   └── simple-dynamodb-rgd.yaml       # KRO ResourceGraphDefinition
-│   └── examples/
-│       ├── session-api-app-kro.yaml       # KRO session API (table + Flask) - START HERE
-│       ├── session-api-app-xp.yaml        # Crossplane session API (table + Flask)
-│       ├── dynamodb-kro/
-│       │   ├── basic.yaml                 # KRO basic example
-│       │   └── simple-basic.yaml          # KRO simple example
-│       └── dynamodb-xp/
-│           └── basic.yaml                 # Crossplane basic example
-├── app/
-│   ├── README.md                    # Session API documentation
-│   ├── session-api.py               # Flask API implementation
-│   └── Dockerfile                   # Docker image definition
-├── tests/
-│   ├── common.sh                    # Common test utilities and environment setup
-│   ├── test_localstack-simple.sh    # Simple LocalStack connectivity test
-│   ├── test_localstack.sh           # Comprehensive LocalStack test (with env detection)
-│   └── test_kro_integration.sh      # KRO integration test
-├── README.md                        # Project overview
-├── CLAUDE.md                        # Developer guide (this file)
-├── DEBUGGING.md                     # Troubleshooting guide for table creation issues
-└── install-ack.sh                   # Manual ACK DynamoDB installation (if Phase 6 fails)
-```
+### Setup & Configuration Scripts
+- `setup.sh` - Full automated setup (9 phases) - **START HERE**
+- `clean.sh` - Cleanup cluster and all resources
+- `create-kubeconfig.sh` - Generate kubeconfig for DevContainer (run after cluster restart)
+- `install-ack.sh` - Manual ACK controller installation (fallback if Phase 6 fails)
+
+### Utility & Diagnostic Scripts
+- `check-dynamodb-tables.sh` - List DynamoDB tables and verify table creation
+- `debug-resources.sh` - Full system diagnostics (shows all resources and controller logs)
+- `test-manual-table-creation.sh` - Manual integration test (isolates KRO vs Crossplane issues)
+
+### Automation Configuration Files
+- `.env.devcontainer` - DevContainer environment (auto-detected)
+- `.env.host` - Host machine environment (auto-detected)
+- `.env.ci` - CI/CD environment (auto-detected)
+- `.env` - User overrides (GITIGNORED)
+- `config/detect-env.sh` - Environment auto-detection logic
+- `config/port-forward-helpers.sh` - Port-forward utilities
+
+### Component Definitions (KubeVela)
+- `definitions/components/aws-dynamodb-simple-kro.cue` - KRO simple table component
+- `definitions/components/aws-dynamodb-simple-xp.cue` - Crossplane simple table component
+
+### Infrastructure as Code (KRO)
+- `definitions/kro/simple-dynamodb-rgd.yaml` - KRO ResourceGraphDefinition for SimpleDynamoDB
+
+### Example Applications (KubeVela Applications)
+- `definitions/examples/session-api-app-kro.yaml` - KRO session API (table + Flask) - **START HERE**
+- `definitions/examples/session-api-app-xp.yaml` - Crossplane session API (table + Flask)
+- `definitions/examples/dynamodb-kro/` - Simple KRO examples
+- `definitions/examples/dynamodb-xp/` - Simple Crossplane examples
+
+### Demo Application (Flask Session API)
+- `app/session-api.py` - Flask REST API implementation
+- `app/Dockerfile` - Docker image for session API
+- `app/requirements.txt` - Python dependencies
+
+### Testing Scripts
+- `tests/common.sh` - Shared test utilities
+- `tests/test_localstack.sh` - Comprehensive LocalStack connectivity test
+- `tests/test_localstack-simple.sh` - Simple LocalStack test
+- `tests/test_kro_integration.sh` - KRO + ACK integration test
+
+### Documentation
+- `README.md` - Project overview, quick start, multi-cloud comparison
+- `ARCHITECTURE.md` - System design, component chains, data flow
+- `DEBUGGING.md` - Troubleshooting guide and decision trees
+- `CLAUDE.md` - Developer guide (this file)
+- `app/README.md` - Session API documentation
+
+### Generated Files (not in git)
+- `kubeconfig-internal` - DevContainer kubeconfig (generated by `create-kubeconfig.sh`)
+- `localstack-values.yaml` - LocalStack Helm deployment values
+- `kro-rbac-fix.yaml` - KRO RBAC permissions (applied during setup)
 
 ## Testing
 
@@ -298,6 +309,31 @@ No manual kubeconfig or endpoint configuration needed!
 - ✅ Kubeconfig needs regeneration after cluster restart (port changes)
 - ✅ All components auto-configured to use LocalStack endpoint
 - ⚠️ ACK controller optional - KRO+RGD sufficient for table management
+
+## Crossplane XP Application
+
+### Current Status
+- ✅ **KRO Application**: Fully functional and tested
+- 🟡 **Crossplane Application**: Deployed but requires credentials setup (optional)
+
+### Crossplane Deployment
+The Crossplane XP application is deployed by default. However, the Crossplane Table resource may remain in `runningWorkflow` state because Crossplane's AWS provider requires specific credential handling when connecting to LocalStack.
+
+The test/test credentials work for KRO + ACK (native Kubernetes), but Crossplane's Terraform-based provider uses a different credential flow that LocalStack doesn't fully recognize by default.
+
+### To Skip Crossplane Deployment
+```bash
+export DEPLOY_CROSSPLANE_APP=false
+./setup.sh
+```
+
+### To Debug Crossplane Issues
+Check the Table resource status:
+```bash
+kubectl describe table.dynamodb.aws.upbound.io sessions-table -n default
+```
+
+The primary focus of this demo is KRO, which works perfectly with LocalStack. Crossplane support is provided for comparison.
 
 ## Additional Resources
 

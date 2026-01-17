@@ -1,19 +1,19 @@
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: session-api-app-kro-localstack
+  name: session-api-app-kro
   namespace: default
 spec:
   components:
     # DynamoDB table for session storage using KRO with LocalStack
-    - name: sessions-table-kro-localstack
-      type: aws-dynamodb-simple-kro-localstack
+    - name: sessions-table
+      type: aws-dynamodb-simple-kro
       properties:
-        tableName: api-sessions-kro-localstack
+        tableName: api-sessions-kro
         region: us-west-2
 
     # Session Management API service
-    - name: session-api-kro-localstack
+    - name: session-api
       type: webservice
       properties:
         image: session-api:latest
@@ -23,7 +23,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "api-sessions-kro-localstack"
+            value: "api-sessions-kro"
           - name: AWS_REGION
             value: "us-west-2"
           - name: LOCALSTACK_ENDPOINT

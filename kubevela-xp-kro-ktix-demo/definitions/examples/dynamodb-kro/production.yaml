@@ -8,7 +8,7 @@ spec:
     - name: user-table-production
       type: aws-dynamodb-kro
       properties:
-        tableName: users-table-production
+        tableName: users-table-production-kro
         region: us-west-2
         billingMode: PAY_PER_REQUEST
 

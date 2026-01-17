@@ -1,4 +1,4 @@
-"aws-dynamodb-simple-kro-localstack": {
+"aws-dynamodb-simple-kro": {
 	alias: ""
 	annotations: {}
 	attributes: {
@@ -29,29 +29,29 @@
 					message: "Table ACTIVE - ARN: \(tableArn)"
 				}
 				if !context.status.healthy {
-					if context.output.status.conditions != _|_ && len(context.output.status.conditions) > 0 {
-						message: context.output.status.conditions[0].message
-					}
-					if context.output.status.conditions == _|_ || len(context.output.status.conditions) == 0 {
-						message: "Table provisioning - State: \(tableState)"
+					message: "Table provisioning - State: \(tableState)"
+					if context.output.status.conditions != _|_ {
+						if len(context.output.status.conditions) > 0 {
+							message: context.output.status.conditions[0].message
+						}
 					}
 				}
 				"""#
 		}
 	}
-	description: "Simple AWS DynamoDB table for LocalStack managed by KRO - uses Kubernetes Jobs to create tables"
+	description: "Simple AWS DynamoDB table managed by KRO (Kube Resource Orchestrator) and ACK - basic table with single partition key"
 	type: "component"
 }
 
 template: {
 	output: {
 		apiVersion: "kro.run/v1alpha1"
-		kind:       "SimpleDynamoDBLocalStack"
+		kind:       "SimpleDynamoDB"
 		metadata: {
 			name: context.name
 		}
 		spec: {
-			// Note: Pass the table name directly (no prefix required for LocalStack)
+			// Note: The RGD already adds the tenant-atlantis- prefix, so pass the base name
 			tableName: parameter.tableName
 			region:    parameter.region
 		}

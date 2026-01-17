@@ -9,7 +9,7 @@ spec:
     - name: user-sessions-simple
       type: aws-dynamodb-simple-kro
       properties:
-        tableName: user-sessions-simple
+        tableName: user-sessions-simple-kro
         region: us-west-2
 
     # Session API application (uses user-sessions-simple table via SimpleDynamoDB KRO)
@@ -23,7 +23,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "tenant-atlantis-user-sessions-simple"
+            value: "tenant-atlantis-user-sessions-simple-kro"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS

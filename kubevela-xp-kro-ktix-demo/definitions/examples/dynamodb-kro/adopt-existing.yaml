@@ -19,7 +19,7 @@ spec:
         # EXAMPLE: If you have an existing table in AWS named:
         #   "tenant-atlantis-existing-sessions-table"
         # Then specify:
-        tableName: existing-sessions-table
+        tableName: existing-sessions-table-kro
 
         # Region must match where the existing table is located
         region: us-west-2

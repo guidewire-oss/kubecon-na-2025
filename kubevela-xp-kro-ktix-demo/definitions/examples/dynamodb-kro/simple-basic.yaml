@@ -8,5 +8,5 @@ spec:
     - name: users-table
       type: aws-dynamodb-simple-kro
       properties:
-        tableName: users-simple
+        tableName: users-simple-kro
         region: us-west-2

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Configuration from environment variables
-TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'tenant-atlantis-user-sessions')
+TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'tenant-atlantis-user-sessions-kro')
 AWS_REGION = os.environ.get('AWS_REGION', 'us-west-2')
 SESSION_TTL_HOURS = int(os.environ.get('SESSION_TTL_HOURS', '24'))
 
