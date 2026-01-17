@@ -23,9 +23,9 @@ spec:
         billingMode: "PROVISIONED"
         attributeDefinitions:
           - name: "orderId"
-            type: S
+            type: "S"
           - name: "orderDate"
-            type: N
+            type: "N"
         keySchema:
           - attributeName: "orderId"
             keyType: "HASH"

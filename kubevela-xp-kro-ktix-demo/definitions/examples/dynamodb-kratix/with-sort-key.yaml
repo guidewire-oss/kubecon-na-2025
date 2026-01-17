@@ -23,9 +23,9 @@ spec:
         billingMode: "PAY_PER_REQUEST"
         attributeDefinitions:
           - name: "accountId"
-            type: S
+            type: "S"
           - name: "timestamp"
-            type: N
+            type: "N"
         keySchema:
           - attributeName: "accountId"
             keyType: "HASH"
