@@ -21,7 +21,7 @@ spec:
       type: aws-dynamodb-kratix
       description: "User sessions DynamoDB table created via Kratix Promise"
       properties:
-        tableName: "user-sessions-kratix"
+        tableName: "user-sessions"
         region: "us-west-2"
         billingMode: "PAY_PER_REQUEST"
         attributeDefinitions:
@@ -47,7 +47,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "user-sessions-kratix"
+            value: "tenant-atlantis-user-sessions-kratix"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS
