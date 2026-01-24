@@ -29,7 +29,7 @@ spec:
     - name: adopted-table
       type: aws-dynamodb-kro
       properties:
-        tableName: existing-table    # Name without the "tenant-atlantis-" prefix
+        tableName: existing-table-kro    # Name without the "tenant-atlantis-" prefix
         region: us-west-2
         billingMode: PAY_PER_REQUEST
         attributeDefinitions: [...]  # Must match existing table
@@ -180,7 +180,7 @@ spec:
     - name: adopted-table
       type: aws-dynamodb-kro
       properties:
-        tableName: legacy-data
+        tableName: legacy-data-kro
         # ... other properties ...
       traits:
         - type: dynamodb-encryption-kro
@@ -225,14 +225,14 @@ components:
   - name: table-us-west
     type: aws-dynamodb-kro
     properties:
-      tableName: service-data
+      tableName: service-data-kro
       region: us-west-2
       # ... schema ...
 
   - name: table-us-east
     type: aws-dynamodb-kro
     properties:
-      tableName: service-data
+      tableName: service-data-kro
       region: us-east-1
       # ... schema ...
 ```

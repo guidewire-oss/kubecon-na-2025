@@ -1,0 +1,85 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: session-api-app-kratix
+  namespace: default
+spec:
+  description: |
+    Complete Session Management Application using Kratix Promise
+
+    This application demonstrates a full-stack deployment combining:
+    - AWS DynamoDB table provisioning via Kratix Promise
+    - Python Flask REST API for session management
+    - Automatic health checks and scaling
+
+    The Kratix Promise abstracts away the complexity of DynamoDB table creation,
+    allowing the application to focus on business logic.
+
+  components:
+    # DynamoDB table for storing sessions (Kratix Promise)
+    - name: user-sessions-table-kratix
+      type: aws-dynamodb-kratix
+      description: "User sessions DynamoDB table created via Kratix Promise"
+      properties:
+        tableName: "user-sessions-kratix"
+        region: "us-west-2"
+        billingMode: "PAY_PER_REQUEST"
+        attributeDefinitions:
+          - name: "id"
+            type: "S"
+          - name: "userId"
+            type: "S"
+        keySchema:
+          - attributeName: "id"
+            keyType: "HASH"
+          - attributeName: "userId"
+            keyType: "HASH"
+
+    # Session API web service
+    - name: session-api-kratix
+      type: webservice
+      description: "Python Flask REST API for session management with Kratix DynamoDB backend"
+      properties:
+        image: session-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: DYNAMODB_TABLE_NAME
+            value: "user-sessions-kratix"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: SESSION_TTL_HOURS
+            value: "24"
+          - name: PORT
+            value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      traits:
+        # Scaling trait: Run 1 replica
+        - type: scaler
+          properties:
+            replicas: 1
+
+        # Resource limits
+        - type: resource
+          properties:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

@@ -1,0 +1,54 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: session-api-app-kro
+  namespace: default
+spec:
+  components:
+    # DynamoDB table for session storage using KRO with LocalStack
+    - name: sessions-table
+      type: aws-dynamodb-simple-kro
+      properties:
+        tableName: api-sessions-kro
+        region: us-west-2
+
+    # Session Management API service
+    - name: session-api
+      type: webservice
+      properties:
+        image: session-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 8080
+            expose: true
+        env:
+          - name: DYNAMODB_TABLE_NAME
+            value: "api-sessions-kro"
+          - name: AWS_REGION
+            value: "us-west-2"
+          - name: LOCALSTACK_ENDPOINT
+            value: "http://localstack.localstack-system.svc.cluster.local:4566"
+          - name: AWS_ACCESS_KEY_ID
+            value: "test"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "test"
+          - name: SESSION_TTL_HOURS
+            value: "24"
+          - name: PORT
+            value: "8080"
+          - name: FLASK_ENV
+            value: "production"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

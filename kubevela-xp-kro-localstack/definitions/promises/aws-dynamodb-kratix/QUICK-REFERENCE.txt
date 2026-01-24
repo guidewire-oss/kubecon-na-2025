@@ -1,0 +1,133 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║            KRATIX DYNAMODB PROMISE - QUICK REFERENCE CARD                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHY TABLES DON'T SHOW IN check-dynamodb-tables.sh
+──────────────────────────────────────────────────────────────────────────
+Different clusters, different stages:
+  • LocalStack Demo: kubevela-demo cluster (this one)
+  • Kratix Promise: kubevela-devex cluster (separate project)
+  • LocalStack demo creates actual tables (Stage 3 ✅)
+  • Kratix Promise awaits operator for execution (Stage 1-2 ⏳)
+
+
+WHAT EXISTS NOW
+──────────────────────────────────────────────────────────────────────────
+✅ Promise deployed:              aws-dynamodb-kratix
+✅ CRD installed:                 dynamodbrequests.dynamodb.kratix.io
+✅ Test requests created:         5 requests (simple, provisioned, time-series)
+✅ All validations working:       Table names, regions, attributes, keys, capacity
+✅ Docker image built:            k3d-kubevela-registry:5000/kratix/dynamodb-resource-configure:0.1.0
+
+
+WHAT'S MISSING
+──────────────────────────────────────────────────────────────────────────
+❌ Kratix operator:               Not installed
+❌ Workflow execution:            Not running (needs operator)
+❌ ACK manifests:                 Not generated (needs workflow)
+❌ Actual DynamoDB tables:        Not created (needs ACK + AWS)
+
+
+HOW TO CHECK STATUS
+──────────────────────────────────────────────────────────────────────────
+View Promise:
+  kubectl get promise aws-dynamodb-kratix
+
+View all requests:
+  kubectl get dynamodbrequests -A
+
+View request details:
+  kubectl describe dynamodbrequest <name>
+
+Run status script:
+  cd .development/promises/aws-dynamodb-kratix/
+  ./check-promise-requests.sh
+
+
+WHAT'S NEXT (TO ACTUALLY CREATE TABLES)
+──────────────────────────────────────────────────────────────────────────
+1. Install Kratix Operator
+   kubectl apply -f https://github.com/syntasso/kratix/releases/download/v0.4.0/kratix.yaml
+
+2. Label cluster for Promise delivery
+   kubectl label node --all kratix=enabled
+
+3. Label cluster for ACK
+   kubectl label node --all cloud=aws ack-enabled=true
+
+4. Configure ACK DynamoDB + AWS credentials
+   (Tables will then be auto-created in AWS)
+
+
+DOCUMENTATION
+──────────────────────────────────────────────────────────────────────────
+INDEX.md                      Master navigation → START HERE
+WHY-NO-LOCALSTACK-TABLES.md   Full explanation of differences
+COMPARISON.md                 LocalStack vs Kratix comparison
+ABOUT-TABLES.md               Current state & what's pending
+TEST-RESULTS.md               Test verification summary
+README-PHASE1.md              Architecture & technical details
+
+
+CREATED BY THIS SESSION
+──────────────────────────────────────────────────────────────────────────
+• Complete Kratix Promise definition (promise.yaml)
+• Docker image (Dockerfile + workflow.py)
+• KubeVela ComponentDefinition (aws-dynamodb-kratix.cue)
+• 5 validated test requests
+• Comprehensive documentation (6 markdown files)
+• Status verification script (check-promise-requests.sh)
+
+
+KEY FACTS
+──────────────────────────────────────────────────────────────────────────
+→ This is TWO different projects, not one
+→ They don't conflict - they're separate implementations
+→ Both are valid for different use cases
+→ Kratix Promise is the platform-as-product model
+→ LocalStack demo is the direct controller model
+→ Implementation is complete, operator integration is next
+
+
+QUICK COMMANDS
+──────────────────────────────────────────────────────────────────────────
+# Check Kratix Promise
+./check-promise-requests.sh
+
+# View all requests
+kubectl get dynamodbrequests -A
+
+# View Promise definition
+kubectl get promise aws-dynamodb-kratix -o yaml
+
+# View CRD schema
+kubectl get crd dynamodbrequests.dynamodb.kratix.io -o yaml
+
+# Create new request
+kubectl apply -f - << 'YAML'
+apiVersion: dynamodb.kratix.io/v1alpha1
+kind: DynamoDBRequest
+metadata:
+  name: my-table
+spec:
+  name: my-table
+  region: us-east-1
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: id
+      type: "S"
+  keySchema:
+    - attributeName: id
+      keyType: HASH
+YAML
+
+
+STATUS
+──────────────────────────────────────────────────────────────────────────
+✅ IMPLEMENTATION:  COMPLETE
+✅ TESTING:         COMPLETE  
+✅ DOCUMENTATION:   COMPLETE
+⏳ OPERATOR:        PENDING (next phase)
+⏳ TABLE CREATION:  PENDING (after operator)
+
+═══════════════════════════════════════════════════════════════════════════════

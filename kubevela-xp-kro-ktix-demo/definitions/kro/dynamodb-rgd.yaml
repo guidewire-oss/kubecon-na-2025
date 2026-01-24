@@ -25,32 +25,30 @@ spec:
       region: string
       billingMode: "string | default=\"PAY_PER_REQUEST\""
 
-      # Throughput (only for PROVISIONED mode)
-      provisionedThroughput:
-        readCapacityUnits: integer
-        writeCapacityUnits: integer
-
       # Schema definition
       attributeDefinitions: "[]AttributeDefinition"
       keySchema: "[]KeySchemaElement"
 
-      # Note: Global and local secondary indexes are not supported in this RGD
-      # For complex table schemas with secondary indexes, use ACK Table directly
-
-      # Features
-      streamEnabled: "boolean | default=false"
-      streamViewType: string
-      pointInTimeRecoveryEnabled: "boolean | default=false"
-      sseEnabled: "boolean | default=false"
-      sseType: string
-      kmsMasterKeyID: string
-      ttlEnabled: "boolean | default=false"
-      ttlAttributeName: string
-      deletionProtectionEnabled: "boolean | default=false"
-      tableClass: string
-
-      # Tags
-      tags: "[]Tag"
+      # ⚠️ ORPHANED PROPERTIES (not mapped to ACK Table - silently ignored)
+      # These properties are defined in this RGD schema but are NOT mapped in the
+      # resources template (lines 74-78). KRO will silently ignore any values you provide.
+      # To use these features, either:
+      # 1. Add template mappings below (for supported ACK fields)
+      # 2. Use ACK Table custom resource directly (for unsupported fields)
+      # 3. Manage via AWS API after table creation
+      #
+      # Potentially mappable to ACK (if added to template):
+      # - provisionedThroughput (for PROVISIONED billing mode)
+      # - streamEnabled, streamViewType
+      # - sseEnabled, sseType, kmsMasterKeyID
+      # - deletionProtectionEnabled
+      # - tableClass
+      # - tags
+      #
+      # Not supported by ACK's simple Table API:
+      # - Global and local secondary indexes (use ACK GlobalSecondaryIndexes field)
+      # - pointInTimeRecoveryEnabled (use ACK PointInTimeRecoverySpecification)
+      # - ttlEnabled/ttlAttributeName (use ACK TTL field after table creation)
     status:
       tableArn: ${table.status.ackResourceMetadata.arn}
       tableStatus: ${table.status.tableStatus}
@@ -75,19 +73,3 @@ spec:
           billingMode: ${schema.spec.billingMode}
           attributeDefinitions: ${schema.spec.attributeDefinitions}
           keySchema: ${schema.spec.keySchema}
-          provisionedThroughput: ${schema.spec.provisionedThroughput}
-          streamSpecification:
-            streamEnabled: ${schema.spec.streamEnabled}
-            streamViewType: ${schema.spec.streamViewType}
-          pointInTimeRecoverySpecification:
-            pointInTimeRecoveryEnabled: ${schema.spec.pointInTimeRecoveryEnabled}
-          sseSpecification:
-            enabled: ${schema.spec.sseEnabled}
-            sseType: ${schema.spec.sseType}
-            kmsMasterKeyID: ${schema.spec.kmsMasterKeyID}
-          timeToLiveSpecification:
-            enabled: ${schema.spec.ttlEnabled}
-            attributeName: ${schema.spec.ttlAttributeName}
-          deletionProtectionEnabled: ${schema.spec.deletionProtectionEnabled}
-          tableClass: ${schema.spec.tableClass}
-          tags: ${schema.spec.tags}

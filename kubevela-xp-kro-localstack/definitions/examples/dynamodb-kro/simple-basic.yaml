@@ -1,0 +1,12 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: dynamodb-simple-kro
+  namespace: default
+spec:
+  components:
+    - name: users-table
+      type: aws-dynamodb-simple-kro
+      properties:
+        tableName: users-simple
+        region: us-west-2

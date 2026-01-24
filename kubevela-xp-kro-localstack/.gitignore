@@ -1,0 +1,15 @@
+# Kubernetes kubeconfig files
+kubeconfig-internal
+kubeconfig-external
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Environment files
+.env
+.env.local
+
+# Build artifacts
+*.log

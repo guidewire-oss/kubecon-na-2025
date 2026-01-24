@@ -1,0 +1,28 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: simpledynamodb
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: SimpleDynamoDB
+    spec:
+      tableName: string
+      region: string
+
+  resources:
+    - id: dynamodbTable
+      template:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: ${schema.spec.tableName}
+        spec:
+          tableName: ${schema.spec.tableName}
+          attributeDefinitions:
+            - attributeName: id
+              attributeType: S
+          keySchema:
+            - attributeName: id
+              keyType: HASH
+          billingMode: PAY_PER_REQUEST

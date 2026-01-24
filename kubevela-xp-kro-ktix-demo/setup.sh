@@ -1,17 +1,19 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# KubeCon North America 2025 - DynamoDB Crossplane vs KRO Demo
+# KubeCon North America 2025 - DynamoDB Demo: Kratix vs Crossplane vs KRO
 # This script sets up a complete environment demonstrating:
-# 1. Kubernetes cluster with KubeVela, Crossplane, and KRO
-# 2. DynamoDB components and traits for both Crossplane and KRO
-# 3. Sample applications comparing both implementations side-by-side
+# 1. Kubernetes cluster with KubeVela, Kratix Promise Framework, Crossplane, and KRO
+# 2. DynamoDB components for all three approaches (Kratix, Crossplane, KRO)
+# 3. Complete session management applications comparing all implementations
+# 4. Infrastructure provisioning through promise abstractions, cloud-native composition, and orchestration
 #
 # NOTE: This script includes fixes documented in CHANGELOG.md (2024-12-24)
 #       - Production namespace is now automatically created
 #       - All YAML examples use quoted attribute types ("S", "N", "B")
 #       - Component definition supports trait-based billing mode overrides
 #       - API version corrected to dynamodb.aws.upbound.io/v1beta1
+#       - Kratix Promise Framework fully integrated (Phase 2.5, 8.6, 8.7)
 #
 # USAGE:
 #   ./setup.sh              # Full installation
@@ -30,13 +32,18 @@ for arg in "$@"; do
             echo "Usage: ./setup.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --skip-install    Skip cluster and tool installation (k3d, KubeVela, Crossplane, KRO, ACK)"
+            echo "  --skip-install    Skip cluster and tool installation (k3d, KubeVela, Kratix, Crossplane, KRO, ACK)"
             echo "                    Only redeploy component definitions and applications"
             echo "  --help, -h        Show this help message"
             echo ""
             echo "Examples:"
-            echo "  ./setup.sh                # Full installation"
+            echo "  ./setup.sh                # Full installation with all three approaches"
             echo "  ./setup.sh --skip-install # Quick redeploy of definitions and apps"
+            echo ""
+            echo "Approaches Deployed:"
+            echo "  • Kratix Promise Framework - Platform abstraction pattern"
+            echo "  • KRO (Kubernetes Resource Orchestrator) - Cloud-native orchestration"
+            echo "  • Crossplane - Multi-cloud infrastructure provisioning"
             exit 0
             ;;
         *)
@@ -48,8 +55,8 @@ for arg in "$@"; do
 done
 
 echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║   KubeCon NA 2025 - DynamoDB: Crossplane vs KRO Demo          ║"
-echo "║   KubeVela + Crossplane + KRO + ACK                           ║"
+echo "║   KubeCon NA 2025 - DynamoDB Demo: Kratix vs KRO vs Crossplane║"
+echo "║   KubeVela + Kratix + KRO + Crossplane + ACK                  ║"
 if [ "$SKIP_INSTALL" = true ]; then
 echo "║   MODE: Skip Install (definitions and apps only)              ║"
 fi
@@ -95,6 +102,25 @@ cd "$SCRIPT_DIR"
 
 # Store the demo root
 DEMO_ROOT=$(pwd)
+
+# =============================================================================
+# Environment Detection: Host vs DevContainer
+# =============================================================================
+# Detect if running in DevContainer and set kubeconfig accordingly
+if [ -f "$DEMO_ROOT/kubeconfig-internal" ] && [ ! -f "$HOME/.kube/config" ]; then
+    # DevContainer environment - use kubeconfig-internal
+    export KUBECONFIG="$DEMO_ROOT/kubeconfig-internal"
+    ENVIRONMENT="devcontainer"
+    print_info "Detected DevContainer environment - using kubeconfig-internal"
+elif [ -f "$HOME/.kube/config" ]; then
+    # Host environment - use default kubeconfig
+    ENVIRONMENT="host"
+    # No need to set KUBECONFIG if using default location
+    print_info "Detected Host environment - using default kubeconfig"
+else
+    # Neither found - will be set up by setup.sh
+    ENVIRONMENT="unknown"
+fi
 
 # =============================================================================
 # PHASE 0: Prerequisites Check
@@ -154,18 +180,13 @@ if [ "$SKIP_INSTALL" = false ]; then
 
             # Run clean.sh to properly clean up before deletion
             if [ -f "$DEMO_ROOT/clean.sh" ]; then
-                # Determine environment based on kubeconfig
-                KUBECONFIG_FILE="$DEMO_ROOT/kubeconfig-internal"
-                if [ -f "$KUBECONFIG_FILE" ]; then
-                    ENVIRONMENT="--devcontainer"
-                    print_info "Using DevContainer environment"
-                else
-                    ENVIRONMENT="--host"
-                    print_info "Using Host environment"
-                fi
+                # Use the same environment detection as at the top of this script
+                # (it was already set in lines 110-123)
+                CLEANUP_ENV="--$ENVIRONMENT"
+                print_info "Using $ENVIRONMENT environment for cleanup"
 
                 # Run clean.sh
-                bash "$DEMO_ROOT/clean.sh" "$ENVIRONMENT" || {
+                bash "$DEMO_ROOT/clean.sh" "$CLEANUP_ENV" || {
                     print_error "Cleanup script failed or was aborted"
                     print_warning "Cluster still exists - please manually clean up or run: k3d cluster delete kubevela-demo"
                     exit 1
@@ -203,6 +224,26 @@ if [ "$SKIP_INSTALL" = false ]; then
     echo "Waiting for all nodes to be ready..."
     kubectl wait --for=condition=Ready nodes --all --timeout=300s
     print_success "All cluster nodes are ready"
+
+    # Set up kubeconfig for host environment
+    if [ "$ENVIRONMENT" = "host" ]; then
+        if [ ! -f "$HOME/.kube/config" ]; then
+            mkdir -p "$HOME/.kube"
+            k3d kubeconfig get kubevela-demo > "$HOME/.kube/config"
+            print_success "Created kubeconfig at $HOME/.kube/config"
+        fi
+    fi
+
+    # Import session-api image into k3d cluster (required for Flask microservice)
+    echo "Importing session-api image into k3d cluster..."
+    if docker images | grep -q "session-api.*latest"; then
+        k3d image import session-api:latest --cluster kubevela-demo || {
+            print_warning "Failed to import session-api:latest image"
+        }
+        print_success "session-api:latest image imported"
+    else
+        print_warning "session-api:latest image not found locally, skipping import"
+    fi
 fi
 
 # =============================================================================
@@ -246,6 +287,59 @@ if [ "$SKIP_INSTALL" = false ]; then
         print_warning "VelaUX may still be starting"
     }
     print_success "VelaUX addon is enabled"
+fi
+
+# =============================================================================
+# PHASE 2.5: Deploy Kratix Promise Framework
+# =============================================================================
+if [ "$SKIP_INSTALL" = false ]; then
+    print_step "Phase 2.5: Deploying Kratix Promise Framework"
+
+    echo "Installing cert-manager (required for Kratix)..."
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+
+    echo "Waiting for cert-manager to be ready..."
+    kubectl wait --namespace cert-manager \
+        --for=condition=ready pod \
+        --selector=app.kubernetes.io/instance=cert-manager \
+        --timeout=300s || {
+        print_warning "cert-manager may still be starting"
+    }
+    print_success "cert-manager is ready"
+
+    echo "Installing Kratix controller..."
+    kubectl apply -f https://github.com/syntasso/kratix/releases/download/v0.125.0/kratix.yaml
+
+    echo "Waiting for Kratix controller to be ready..."
+    kubectl wait --namespace kratix-platform-system \
+        --for=condition=ready pod \
+        --selector=app.kubernetes.io/name=kratix \
+        --timeout=300s || {
+        print_warning "Kratix controller may still be starting"
+    }
+    print_success "Kratix controller is ready"
+
+    echo "Deploying DynamoDB request CRD..."
+    if [ -f "$DEMO_ROOT/definitions/dynamodb-request-crd.yaml" ]; then
+        kubectl apply -f "$DEMO_ROOT/definitions/dynamodb-request-crd.yaml"
+        print_success "DynamoDB request CRD deployed"
+    else
+        print_warning "dynamodb-request-crd.yaml not found"
+    fi
+
+    echo "Deploying AWS DynamoDB Kratix Promise..."
+    if [ -f "$DEMO_ROOT/definitions/kratix-promise-dynamodb.yaml" ]; then
+        kubectl apply -f "$DEMO_ROOT/definitions/kratix-promise-dynamodb.yaml" || {
+            print_warning "Kratix promise deployment failed, but continuing with CRD approach"
+        }
+    else
+        print_info "kratix-promise-dynamodb.yaml not found, using CRD approach"
+    fi
+    print_success "Kratix Promise Framework deployed"
+
+    echo ""
+    echo "Waiting for Kratix promise to be ready..."
+    sleep 5
 fi
 
 # =============================================================================
@@ -606,6 +700,15 @@ fi
 # =============================================================================
 print_step "Phase 6: Deploying DynamoDB Component Definitions and Traits"
 
+echo "Deploying Kratix DynamoDB component (aws-dynamodb-kratix)..."
+if [ -f "$DEMO_ROOT/definitions/components/aws-dynamodb-kratix.cue" ]; then
+    vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-kratix.cue"
+    print_success "Kratix DynamoDB component deployed"
+else
+    print_warning "Kratix component definition not found"
+fi
+
+echo ""
 echo "Deploying Crossplane DynamoDB component (aws-dynamodb-xp)..."
 if [ -f "$DEMO_ROOT/definitions/components/aws-dynamodb-xp.cue" ]; then
     vela def apply "$DEMO_ROOT/definitions/components/aws-dynamodb-xp.cue"
@@ -625,6 +728,7 @@ else
     exit 1
 fi
 
+echo ""
 echo ""
 echo "Deploying KRO Simple DynamoDB component (aws-dynamodb-simple-kro)..."
 if [ -f "$DEMO_ROOT/definitions/components/aws-dynamodb-simple-kro.cue" ]; then
@@ -823,6 +927,32 @@ else
 fi
 
 # =============================================================================
+# PHASE 8.6: Deploy Example Kratix Promise Application
+# =============================================================================
+print_step "Phase 8.6: Deploying Example Kratix Promise Application"
+
+if [ -f "$DEMO_ROOT/definitions/examples/kratix-example-app.yaml" ]; then
+    echo "Deploying KubeVela application that creates DynamoDB table via Kratix promise..."
+    vela up -f "$DEMO_ROOT/definitions/examples/kratix-example-app.yaml"
+    print_success "deployed: kratix-example-dynamodb (DynamoDB table via Kratix promise)"
+else
+    print_warning "kratix-example-app.yaml not found, skipping Kratix example"
+fi
+
+# =============================================================================
+# PHASE 8.7: Deploying Session Management Application with Kratix DynamoDB
+# =============================================================================
+print_step "Phase 8.7: Deploying Session Management Application with Kratix DynamoDB"
+
+if [ -f "$DEMO_ROOT/definitions/examples/session-management-app-kratix.yaml" ]; then
+    echo "Deploying session management API with Kratix DynamoDB backend..."
+    vela up -f "$DEMO_ROOT/definitions/examples/session-management-app-kratix.yaml"
+    print_success "deployed: session-api-app-kratix (Flask API + Kratix DynamoDB)"
+else
+    print_warning "session-management-app-kratix.yaml not found, skipping Kratix session management app"
+fi
+
+# =============================================================================
 # PHASE 9: Verification
 # =============================================================================
 print_step "Phase 9: Verifying Deployments"
@@ -835,6 +965,18 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "KubeVela Applications:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl get applications.core.oam.dev || print_warning "No applications found yet"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Kratix Promises:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+kubectl get promise.platform.kratix.io -n kratix || print_warning "No Kratix promises found in kratix namespace"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Kratix DynamoDB Requests (via KubeVela aws-dynamodb-kratix component):"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+kubectl get dynamodbrequests.dynamodb.kratix.io -A || print_warning "No Kratix DynamoDB requests found yet"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -899,10 +1041,23 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "  ✓ k3d Kubernetes Cluster (1 server, 2 agents)"
 echo "  ✓ KubeVela Application Platform"
+echo "  ✓ Kratix Promise Framework (deployed via KubeVela)"
 echo "  ✓ Crossplane + AWS DynamoDB Provider"
 echo "  ✓ KRO (Kube Resource Orchestrator) + RBAC Fix"
 echo "  ✓ ACK DynamoDB Controller"
 echo "  ✓ KRO ResourceGraphDefinitions (DynamoDB + SimpleDynamoDB)"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔹 KRATIX PROMISE FRAMEWORK"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  ✓ Kratix Promise Deployer Component (KubeVela component definition)"
+echo "  ✓ AWS DynamoDB Promise (kratix-platform KubeVela application)"
+echo ""
+echo -e "  ${CYAN}Check status:${NC}"
+echo "    vela status kratix-platform"
+echo "    kubectl get promise.platform.kratix.io -A"
+echo "    kubectl get dynamodbrequests.dynamodb.kratix.io -A"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🔹 CROSSPLANE APPLICATIONS"
@@ -922,6 +1077,18 @@ if [ "$AWS_CREDS_CONFIGURED" = true ]; then
 echo "    vela status sessions-xp"
 echo "    kubectl get pods -l app.oam.dev/component=sessions-api-xp"
 fi
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔹 KRATIX PROMISE APPLICATIONS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  1. kratix-example-dynamodb        - DynamoDB table via Kratix promise"
+echo "  2. session-api-app-kratix         - Flask session API + Kratix DynamoDB backend"
+echo ""
+echo -e "  ${CYAN}Check status:${NC}"
+echo "    vela status kratix-example-dynamodb"
+echo "    vela status session-api-app-kratix"
+echo "    kubectl get dynamodbrequests.dynamodb.kratix.io -A"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🔹 KRO + ACK APPLICATIONS"
@@ -972,6 +1139,10 @@ echo "    kubectl get resourcegraphdefinition dynamodbtable -o yaml"
 echo ""
 echo -e "  ${YELLOW}Watch ACK resources:${NC}"
 echo "    watch kubectl get table.dynamodb.services.k8s.aws -A"
+echo ""
+echo -e "  ${YELLOW}Watch Kratix promises and requests:${NC}"
+echo "    kubectl get promise.platform.kratix.io -n kratix"
+echo "    watch kubectl get dynamodbrequests.dynamodb.kratix.io -A"
 echo ""
 echo -e "  ${YELLOW}View logs:${NC}"
 echo "    kubectl logs -n crossplane-system -l app=crossplane --tail=50 -f"

@@ -61,7 +61,7 @@ A Flask-based REST API for managing user sessions with AWS DynamoDB, featuring a
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DYNAMODB_TABLE_NAME` | DynamoDB table name | `tenant-atlantis-user-sessions` |
+| `DYNAMODB_TABLE_NAME` | DynamoDB table name | `tenant-atlantis-user-sessions-kro` |
 | `AWS_REGION` | AWS region | `us-west-2` |
 | `SESSION_TTL_HOURS` | Session TTL in hours | `24` |
 | `PORT` | Server port | `8080` |
@@ -81,7 +81,7 @@ A Flask-based REST API for managing user sessions with AWS DynamoDB, featuring a
 pip install -r requirements.txt
 
 # Set environment variables
-export DYNAMODB_TABLE_NAME=tenant-atlantis-user-sessions
+export DYNAMODB_TABLE_NAME=tenant-atlantis-user-sessions-kro
 export AWS_REGION=us-west-2
 export SESSION_TTL_HOURS=24
 
@@ -115,7 +115,7 @@ docker build -t session-api:v1.0.0 .
 
 # Run the container
 docker run -p 8080:8080 \
-  -e DYNAMODB_TABLE_NAME=tenant-atlantis-user-sessions \
+  -e DYNAMODB_TABLE_NAME=tenant-atlantis-user-sessions-kro \
   -e AWS_REGION=us-west-2 \
   -e AWS_ACCESS_KEY_ID=your_key \
   -e AWS_SECRET_ACCESS_KEY=your_secret \
@@ -217,7 +217,7 @@ kubectl logs -l app.oam.dev/component=session-api
 **Check**: DynamoDB TTL is enabled on the `ttl` attribute
 ```bash
 aws dynamodb describe-time-to-live \
-  --table-name tenant-atlantis-user-sessions \
+  --table-name tenant-atlantis-user-sessions-kro \
   --region us-west-2
 ```
 
