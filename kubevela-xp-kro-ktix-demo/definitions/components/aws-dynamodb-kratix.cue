@@ -27,6 +27,7 @@ template: {
 		spec: {
 			name:                  parameter.tableName
 			region:                parameter.region
+			// Note: Kratix Promise workflow will add "-kratix" suffix to table name
 			billingMode:           parameter.billingMode
 			attributeDefinitions:  parameter.attributeDefinitions
 			keySchema:             parameter.keySchema
@@ -63,8 +64,8 @@ template: {
 
 		// Provisioned throughput (only used when billingMode is PROVISIONED)
 		provisioned?: {
-			readCapacity:  *5 | int & >=1 & <=40000
-			writeCapacity: *5 | int & >=1 & <=40000
+			readCapacity:  *5 | (int & >=1 & <=40000)
+			writeCapacity: *5 | (int & >=1 & <=40000)
 		}
 	}
 }

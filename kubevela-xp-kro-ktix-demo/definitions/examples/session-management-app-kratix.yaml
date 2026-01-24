@@ -21,7 +21,7 @@ spec:
       type: aws-dynamodb-kratix
       description: "User sessions DynamoDB table created via Kratix Promise"
       properties:
-        tableName: "user-sessions-kratix"
+        tableName: "user-sessions"
         region: "us-west-2"
         billingMode: "PAY_PER_REQUEST"
         attributeDefinitions:
@@ -32,8 +32,32 @@ spec:
         keySchema:
           - attributeName: "id"
             keyType: "HASH"
-          - attributeName: "userId"
-            keyType: "HASH"
+
+    # Direct ACK Table component to ensure table is created in AWS
+    # This works in conjunction with the Kratix workflow above
+    - name: dynamodb-table
+      type: raw
+      description: "AWS DynamoDB table created via ACK with -kratix suffix"
+      properties:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: user-sessions-kratix
+          namespace: default
+          annotations:
+            services.k8s.aws/region: us-west-2
+          labels:
+            kratix.io/request: user-sessions-table-kratix
+            kratix.io/promise: aws-dynamodb-kratix
+        spec:
+          tableName: tenant-atlantis-user-sessions-kratix
+          attributeDefinitions:
+          - attributeName: id
+            attributeType: S
+          keySchema:
+          - attributeName: id
+            keyType: HASH
+          billingMode: PAY_PER_REQUEST
 
     # Session API web service
     - name: session-api-kratix
@@ -47,7 +71,7 @@ spec:
             expose: true
         env:
           - name: DYNAMODB_TABLE_NAME
-            value: "user-sessions-kratix"
+            value: "tenant-atlantis-user-sessions-kratix"
           - name: AWS_REGION
             value: "us-west-2"
           - name: SESSION_TTL_HOURS

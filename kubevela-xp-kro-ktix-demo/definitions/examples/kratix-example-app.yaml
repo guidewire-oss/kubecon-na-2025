@@ -14,7 +14,7 @@ spec:
       type: aws-dynamodb-kratix
       description: "User sessions table created via Kratix promise"
       properties:
-        tableName: "user-sessions-kratix"
+        tableName: "user-sessions"
         region: "us-west-2"
         billingMode: "PAY_PER_REQUEST"
         attributeDefinitions:

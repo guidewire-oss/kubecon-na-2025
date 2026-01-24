@@ -1,0 +1,54 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: basic-table-kratix
+  namespace: default
+spec:
+  description: |
+    Basic DynamoDB table example using Kratix Promise Framework
+
+    This demonstrates a simple table with:
+    - Single partition key (id)
+    - Pay-per-request billing
+    - Kratix Promise for table provisioning
+
+  components:
+    # Kratix Promise DynamoDB request
+    - name: basic-table
+      type: aws-dynamodb-kratix
+      description: "Basic DynamoDB table via Kratix Promise"
+      properties:
+        tableName: "basic-table"
+        region: "us-west-2"
+        billingMode: "PAY_PER_REQUEST"
+        attributeDefinitions:
+          - name: "id"
+            type: "S"
+        keySchema:
+          - attributeName: "id"
+            keyType: "HASH"
+
+    # Direct ACK Table to ensure AWS provisioning
+    - name: dynamodb-table
+      type: raw
+      description: "AWS DynamoDB table with -kratix suffix"
+      properties:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: basic-table-kratix
+          namespace: default
+          annotations:
+            services.k8s.aws/region: us-west-2
+          labels:
+            kratix.io/request: basic-table
+            kratix.io/promise: aws-dynamodb-kratix
+        spec:
+          tableName: tenant-atlantis-basic-table-kratix
+          attributeDefinitions:
+          - attributeName: id
+            attributeType: S
+          keySchema:
+          - attributeName: id
+            keyType: HASH
+          billingMode: PAY_PER_REQUEST

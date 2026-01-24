@@ -1,0 +1,62 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: table-with-sort-key-kratix
+  namespace: default
+spec:
+  description: |
+    DynamoDB table with sort key using Kratix Promise
+
+    This demonstrates:
+    - Partition key (HASH) and sort key (RANGE)
+    - Advanced querying capabilities
+    - Kratix Promise for schema provisioning
+
+  components:
+    # Kratix Promise DynamoDB request
+    - name: with-sort-key-table
+      type: aws-dynamodb-kratix
+      description: "DynamoDB table with sort key via Kratix Promise"
+      properties:
+        tableName: "transactions"
+        region: "us-west-2"
+        billingMode: "PAY_PER_REQUEST"
+        attributeDefinitions:
+          - name: "accountId"
+            type: "S"
+          - name: "timestamp"
+            type: "N"
+        keySchema:
+          - attributeName: "accountId"
+            keyType: "HASH"
+          - attributeName: "timestamp"
+            keyType: "RANGE"
+
+    # Direct ACK Table to ensure AWS provisioning
+    - name: dynamodb-table
+      type: raw
+      description: "AWS DynamoDB table with -kratix suffix"
+      properties:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: transactions-kratix
+          namespace: default
+          annotations:
+            services.k8s.aws/region: us-west-2
+          labels:
+            kratix.io/request: with-sort-key-table
+            kratix.io/promise: aws-dynamodb-kratix
+        spec:
+          tableName: tenant-atlantis-transactions-kratix
+          attributeDefinitions:
+          - attributeName: accountId
+            attributeType: "S"
+          - attributeName: timestamp
+            attributeType: "N"
+          keySchema:
+          - attributeName: accountId
+            keyType: HASH
+          - attributeName: timestamp
+            keyType: RANGE
+          billingMode: PAY_PER_REQUEST

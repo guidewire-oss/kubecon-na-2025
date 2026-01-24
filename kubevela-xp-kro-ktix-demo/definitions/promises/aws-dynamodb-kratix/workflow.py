@@ -139,6 +139,8 @@ def generate_ack_table_manifest(request: dict) -> dict:
     spec = request.get("spec", {})
 
     table_name = spec["name"].strip()
+    # Add -kratix suffix to identify Kratix-provisioned tables
+    table_name_with_suffix = table_name + "-kratix"
     region = spec["region"].strip()
     billing_mode = spec.get("billingMode", "PAY_PER_REQUEST").strip()
     attr_defs = spec.get("attributeDefinitions", [])
@@ -157,7 +159,7 @@ def generate_ack_table_manifest(request: dict) -> dict:
         "apiVersion": "dynamodb.services.k8s.aws/v1alpha1",
         "kind": "Table",
         "metadata": {
-            "name": table_name.lower(),
+            "name": table_name_with_suffix.lower(),
             "namespace": metadata.get("namespace", "default"),
             "labels": {
                 "kratix.io/request": metadata.get("name", ""),
@@ -165,7 +167,7 @@ def generate_ack_table_manifest(request: dict) -> dict:
             }
         },
         "spec": {
-            "tableName": table_name,
+            "tableName": table_name_with_suffix,
             "attributeDefinitions": attributes,
             "keySchema": key_schema,
             "region": region

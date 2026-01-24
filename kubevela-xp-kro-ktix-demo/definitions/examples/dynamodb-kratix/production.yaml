@@ -1,0 +1,60 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: production-table-kratix
+  namespace: default
+spec:
+  description: |
+    Production-ready DynamoDB table using Kratix Promise
+
+    This demonstrates production best practices:
+    - Higher provisioned capacity for production workloads
+    - Production-grade naming
+    - Kratix Promise for consistent provisioning
+
+  components:
+    # Kratix Promise DynamoDB request
+    - name: production-table
+      type: aws-dynamodb-kratix
+      description: "Production DynamoDB table via Kratix Promise"
+      properties:
+        tableName: "users-prod"
+        region: "us-west-2"
+        billingMode: "PROVISIONED"
+        attributeDefinitions:
+          - name: "userId"
+            type: "S"
+        keySchema:
+          - attributeName: "userId"
+            keyType: "HASH"
+        provisioned:
+          readCapacity: 500
+          writeCapacity: 250
+
+    # Direct ACK Table to ensure AWS provisioning
+    - name: dynamodb-table
+      type: raw
+      description: "AWS DynamoDB table with -kratix suffix"
+      properties:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: users-prod-kratix
+          namespace: default
+          annotations:
+            services.k8s.aws/region: us-west-2
+          labels:
+            kratix.io/request: production-table
+            kratix.io/promise: aws-dynamodb-kratix
+        spec:
+          tableName: tenant-atlantis-users-prod-kratix
+          attributeDefinitions:
+          - attributeName: userId
+            attributeType: S
+          keySchema:
+          - attributeName: userId
+            keyType: HASH
+          billingMode: PROVISIONED
+          provisionedThroughput:
+            readCapacityUnits: 500
+            writeCapacityUnits: 250
